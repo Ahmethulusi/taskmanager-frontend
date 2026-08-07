@@ -16,10 +16,10 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/lib/AuthContext'
-import { loginSchema, type LoginFormValues } from '@/modules/auth/utils/schemas'
+import { registerSchema, type RegisterFormValues } from '@/modules/auth/utils/schemas'
 
-export function LoginPage() {
-  const { login } = useAuth()
+export function RegisterPage() {
+  const { register: registerUser } = useAuth()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
 
@@ -27,17 +27,17 @@ export function LoginPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
   })
 
-  async function onSubmit(values: LoginFormValues) {
+  async function onSubmit(values: RegisterFormValues) {
     setError(null)
     try {
-      await login(values.email, values.password)
+      await registerUser(values.fullName, values.email, values.password)
       navigate('/tasks')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Giriş yapılamadı')
+      setError(err instanceof Error ? err.message : 'Kayıt olunamadı')
     }
   }
 
@@ -53,8 +53,8 @@ export function LoginPage() {
 
         <Card className="shadow-xl shadow-black/5">
           <CardHeader>
-            <CardTitle className="text-xl">Giriş Yap</CardTitle>
-            <CardDescription>Devam etmek için hesabınıza giriş yapın.</CardDescription>
+            <CardTitle className="text-xl">Kayıt Ol</CardTitle>
+            <CardDescription>Yeni bir hesap oluşturarak başlayın.</CardDescription>
           </CardHeader>
 
           <CardContent>
@@ -68,6 +68,24 @@ export function LoginPage() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="fullName">Ad Soyad</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Adınız Soyadınız"
+                  autoComplete="name"
+                  aria-invalid={Boolean(errors.fullName)}
+                  className="h-10"
+                  {...register('fullName')}
+                />
+                {errors.fullName && (
+                  <p className="animate-in fade-in-0 text-xs text-destructive">
+                    {errors.fullName.message}
+                  </p>
+                )}
+              </div>
+
               <div className="flex flex-col gap-2">
                 <Label htmlFor="email">E-posta</Label>
                 <Input
@@ -92,7 +110,7 @@ export function LoginPage() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   aria-invalid={Boolean(errors.password)}
                   className="h-10"
                   {...register('password')}
@@ -106,19 +124,19 @@ export function LoginPage() {
 
               <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">
                 {isSubmitting && <Loader2 className="animate-spin" />}
-                {isSubmitting ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+                {isSubmitting ? 'Kayıt olunuyor...' : 'Kayıt Ol'}
               </Button>
             </form>
           </CardContent>
 
           <CardFooter className="justify-center">
             <p className="text-sm text-muted-foreground">
-              Hesabın yok mu?{' '}
+              Zaten hesabın var mı?{' '}
               <Link
-                to="/register"
+                to="/login"
                 className="font-medium text-primary underline-offset-4 transition-colors hover:underline"
               >
-                Kayıt Ol
+                Giriş Yap
               </Link>
             </p>
           </CardFooter>

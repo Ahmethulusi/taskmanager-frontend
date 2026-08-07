@@ -1,3 +1,5 @@
+import { PageHeader } from '@/components/layout/PageHeader'
+
 export function DepartmentsPage() {
-  return <h1>Departmanlar</h1>
+  return <PageHeader title="Departmanlar" />
 }

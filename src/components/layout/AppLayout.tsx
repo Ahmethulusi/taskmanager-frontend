@@ -1,20 +1,18 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
+
+import { AppSidebar } from '@/components/layout/AppSidebar'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 export function AppLayout() {
   return (
-    <div>
-      <nav>
-        <Link to="/login">Login</Link>
-        {' | '}
-        <Link to="/tasks">Görevler</Link>
-        {' | '}
-        <Link to="/users">Kullanıcılar</Link>
-        {' | '}
-        <Link to="/departments">Departmanlar</Link>
-      </nav>
-      <main>
-        <Outlet />
-      </main>
-    </div>
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <Outlet />
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   )
 }
