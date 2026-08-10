@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useDraggable } from '@dnd-kit/core'
-import { MoreVertical } from 'lucide-react'
+import { GripVertical, MoreVertical, Calendar, FolderKanban } from 'lucide-react'
 
 import { UserAvatar } from '@/components/UserAvatar'
 import { Badge } from '@/components/ui/badge'
@@ -16,14 +16,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/lib/AuthContext'
+import { getLabelColor } from '@/lib/labelColors'
+import { getStatusColor } from '@/lib/statusColors'
 import { cn } from '@/lib/utils'
+import { useStatusesQuery } from '@/modules/statuses/api/useStatusesQuery'
 import { useUpdateTaskStatusMutation } from '@/modules/tasks/api/useUpdateTaskStatusMutation'
 import { AssignTaskDialog } from '@/modules/tasks/components/AssignTaskDialog'
 import { DeleteTaskDialog } from '@/modules/tasks/components/DeleteTaskDialog'
 import { TaskDetailsDialog } from '@/modules/tasks/components/TaskDetailsDialog'
 import { TaskFormDialog } from '@/modules/tasks/components/TaskFormDialog'
-import { TASK_COLUMNS } from '@/modules/tasks/utils/columns'
-import { getPriorityDisplay, getStatusDisplay } from '@/modules/tasks/utils/taskDisplay'
+import { getPriorityDisplay } from '@/modules/tasks/utils/taskDisplay'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 
 const PRIORITY_BADGE_CLASSES: Record<string, string> = {
@@ -33,21 +35,25 @@ const PRIORITY_BADGE_CLASSES: Record<string, string> = {
   unknown: 'bg-muted text-muted-foreground',
 }
 
-const STATUS_BORDER_CLASSES: Record<string, string> = {
-  pending: 'border-status-pending-dot/45',
-  'in-progress': 'border-status-progress-dot/45',
-  done: 'border-status-done-dot/45',
-  unknown: 'border-border',
+const TASK_CARD_CLASSES =
+  'group rounded-md border-2 bg-card p-3 text-card-foreground cursor-grab active:cursor-grabbing'
+
+const dueDateFormatter = new Intl.DateTimeFormat('tr-TR', {
+  day: 'numeric',
+  month: 'short',
+})
+
+/** "Kadıköy Şubesi" → "Kadıköy." — yalnızca ilk kelime tam görünür. */
+function abbreviateBranchName(name: string): string {
+  const [first, ...rest] = name.trim().split(/\s+/).filter(Boolean)
+  if (!first) {
+    return name
+  }
+  return rest.length > 0 ? `${first}.` : first
 }
 
-const TASK_CARD_CLASSES = 'rounded-md border-2 bg-card p-3 text-card-foreground'
-
-function getTaskCardClassName(status: string, ...extra: Array<string | false | undefined>) {
-  return cn(
-    TASK_CARD_CLASSES,
-    STATUS_BORDER_CLASSES[getStatusDisplay(status).variant],
-    ...extra
-  )
+function getTaskCardClassName(...extra: Array<string | false | undefined>) {
+  return cn(TASK_CARD_CLASSES, ...extra)
 }
 
 type OpenDialog = 'details' | 'edit' | 'delete' | 'assign' | null
@@ -58,31 +64,47 @@ interface TaskCardProps {
 
 export function TaskCard({ task }: TaskCardProps) {
   const { user } = useAuth()
+  const { data: statuses } = useStatusesQuery()
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id,
-    data: { status: task.status },
+    data: { statusId: task.statusId },
   })
   const { mutate, isPending, error } = useUpdateTaskStatusMutation()
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null)
 
-  const otherColumns = TASK_COLUMNS.filter((column) => column.status !== task.status)
+  const otherStatuses =
+    statuses?.filter((status) => String(status.id) !== String(task.statusId)) ?? []
   const isAdmin = user?.role === 'Admin'
+  const borderColor = getStatusColor(task.statusColorKey).dot
 
   return (
     <>
       <div
         ref={setNodeRef}
-        style={{ touchAction: 'none' }}
+        style={{
+          touchAction: 'none',
+          borderColor: `${borderColor}73`,
+          // DragOverlay kullanıldığı için kaynak kartta transform uygulanmaz;
+          // overflow parent'larda kenar kırpmasını önler.
+          transform: 'none',
+        }}
         {...listeners}
         {...attributes}
-        className={getTaskCardClassName(task.status, isDragging && 'opacity-40')}
+        className={getTaskCardClassName(isDragging && 'opacity-40')}
       >
         <TaskCardBody
           task={task}
           action={
             <DropdownMenu>
               <DropdownMenuTrigger
-                render={<Button type="button" variant="ghost" size="icon-sm" />}
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="cursor-pointer"
+                  />
+                }
               >
                 <MoreVertical className="size-5" />
                 <span className="sr-only">Görev menüsü</span>
@@ -96,13 +118,15 @@ export function TaskCard({ task }: TaskCardProps) {
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>Durum Değiştir</DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
-                    {otherColumns.map((column) => (
+                    {otherStatuses.map((status) => (
                       <DropdownMenuItem
-                        key={column.status}
+                        key={String(status.id)}
                         disabled={isPending}
-                        onClick={() => mutate({ taskId: task.id, status: column.status })}
+                        onClick={() =>
+                          mutate({ taskId: String(task.id), statusId: String(status.id) })
+                        }
                       >
-                        {column.label}
+                        {status.name}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuSubContent>
@@ -154,9 +178,13 @@ export function TaskCard({ task }: TaskCardProps) {
 }
 
 export function TaskCardDragOverlay({ task }: TaskCardProps) {
+  const borderColor = getStatusColor(task.statusColorKey).dot
   return (
-    <div className={getTaskCardClassName(task.status, 'cursor-grabbing shadow-lg')}>
-      <TaskCardBody task={task} />
+    <div
+      className={getTaskCardClassName('cursor-grabbing shadow-lg')}
+      style={{ borderColor: `${borderColor}73` }}
+    >
+      <TaskCardBody task={task} showDragHandle />
     </div>
   )
 }
@@ -164,32 +192,100 @@ export function TaskCardDragOverlay({ task }: TaskCardProps) {
 interface TaskCardBodyProps {
   task: TaskDto
   action?: ReactNode
+  showDragHandle?: boolean
 }
 
-function TaskCardBody({ task, action }: TaskCardBodyProps) {
+function TaskCardBody({ task, action, showDragHandle = false }: TaskCardBodyProps) {
   const priority = getPriorityDisplay(task.priority)
 
   return (
     <>
-      <div className="flex items-start justify-between gap-1">
-        <p className="font-heading text-base font-medium">{task.title}</p>
+      <div className="flex items-start gap-1">
+        <GripVertical
+          aria-hidden
+          className={cn(
+            'mt-0.5 size-5 shrink-0 text-muted-foreground transition-opacity',
+            showDragHandle
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100 group-active:opacity-100'
+          )}
+        />
+        <p className="min-w-0 flex-1 font-heading text-base font-medium">{task.title}</p>
         {action}
       </div>
 
-      <Badge className={cn('mt-2 h-6 text-sm', PRIORITY_BADGE_CLASSES[priority.variant])}>
-        {priority.label}
-      </Badge>
-
-      <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-        {task.assignedToUserName ? (
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <Badge className={cn('h-6 text-sm', PRIORITY_BADGE_CLASSES[priority.variant])}>
+          {priority.label}
+        </Badge>
+        {task.labels?.length > 0 && (
           <>
-            <UserAvatar name={task.assignedToUserName} size="sm" />
-            <span>{task.assignedToUserName}</span>
+            {task.labels.slice(0, 2).map((label) => {
+              const color = getLabelColor(String(label.id))
+              return (
+                <Badge
+                  key={String(label.id)}
+                  variant="secondary"
+                  className="h-6 max-w-24 truncate border-transparent text-xs"
+                  style={{ backgroundColor: color.bg, color: color.text }}
+                  title={label.name}
+                >
+                  {label.name}
+                </Badge>
+              )
+            })}
+            {task.labels.length > 2 && (
+              <Badge
+                variant="secondary"
+                className="h-6 border-transparent text-xs text-muted-foreground"
+                title={task.labels
+                  .slice(2)
+                  .map((label) => label.name)
+                  .join(', ')}
+              >
+                …
+              </Badge>
+            )}
           </>
+        )}
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        {task.assignedUsers?.length ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <UserAvatar name={task.assignedUsers[0].fullName} size="sm" />
+            <span className="truncate">{task.assignedUsers[0].fullName}</span>
+            {task.assignedUsers.length > 1 && (
+              <span className="shrink-0 text-muted-foreground">
+                +{task.assignedUsers.length - 1}
+              </span>
+            )}
+          </div>
         ) : (
           <span>Atanmadı</span>
         )}
+        {task.dueDate && (
+          <div className="flex items-center gap-1">
+            <Calendar className="size-3.5 shrink-0" />
+            <span>{dueDateFormatter.format(new Date(task.dueDate))}</span>
+          </div>
+        )}
       </div>
+
+      {task.projectName && (
+        <div className="mt-2 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+          <FolderKanban className="size-3.5 shrink-0 text-primary/70" />
+          <span className="truncate">{task.projectName}</span>
+          {task.departmentName && (
+            <>
+              <span className="h-3 w-px shrink-0 bg-border" aria-hidden />
+              <span className="shrink-0" title={task.departmentName}>
+                {abbreviateBranchName(task.departmentName)}
+              </span>
+            </>
+          )}
+        </div>
+      )}
     </>
   )
 }

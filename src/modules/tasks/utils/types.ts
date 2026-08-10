@@ -1,15 +1,27 @@
+import type { LabelDto } from '@/modules/labels/utils/types'
+
+export interface TaskAssignedUser {
+  id: string
+  fullName: string
+}
+
 export interface TaskDto {
   id: string
   title: string
   description: string | null
-  status: string
+  statusId: string
+  statusName: string
+  statusColorKey: string
   priority: string
   createdAt: string
   updatedAt: string | null
   departmentId: string | null
   departmentName: string | null
+  projectId: string | null
+  projectName: string | null
   createdByUserId: string
   createdByUserName: string
-  assignedToUserId: string | null
-  assignedToUserName: string | null
+  assignedUsers: TaskAssignedUser[]
+  dueDate: string | null
+  labels: LabelDto[]
 }

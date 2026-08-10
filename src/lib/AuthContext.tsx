@@ -9,6 +9,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>
   register: (fullName: string, email: string, password: string) => Promise<void>
   logout: () => void
+  updateMustChangePassword: (value: boolean) => void
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -30,7 +31,18 @@ function readPersistedUser(): AuthResponse | null {
     return null
   }
   try {
-    return JSON.parse(storedUser) as AuthResponse
+    const parsed = JSON.parse(storedUser) as Partial<AuthResponse>
+    if (!parsed.token || !parsed.email || !parsed.fullName || !parsed.role) {
+      clearPersistedAuth()
+      return null
+    }
+    return {
+      token: parsed.token,
+      fullName: parsed.fullName,
+      email: parsed.email,
+      role: parsed.role,
+      mustChangePassword: parsed.mustChangePassword ?? false,
+    }
   } catch {
     clearPersistedAuth()
     return null
@@ -58,8 +70,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  function updateMustChangePassword(value: boolean) {
+    setUser((current) => {
+      if (!current) {
+        return current
+      }
+      const updated = { ...current, mustChangePassword: value }
+      localStorage.setItem('authUser', JSON.stringify(updated))
+      return updated
+    })
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, login, register, logout, updateMustChangePassword }}
+    >
       {children}
     </AuthContext.Provider>
   )

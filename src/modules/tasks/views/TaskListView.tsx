@@ -6,7 +6,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { getPriorityDisplay, getStatusDisplay } from '@/modules/tasks/utils/taskDisplay'
+import { getStatusColor } from '@/lib/statusColors'
+import { getPriorityDisplay } from '@/modules/tasks/utils/taskDisplay'
 import type { SortDirection, SortField } from '@/modules/tasks/utils/taskFilters'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 
@@ -15,13 +16,6 @@ const dateFormatter = new Intl.DateTimeFormat('tr-TR', {
   month: '2-digit',
   year: 'numeric',
 })
-
-const STATUS_BADGE_CLASSES: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
-  'in-progress': 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-  done: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-  unknown: 'bg-muted text-muted-foreground',
-}
 
 const PRIORITY_BADGE_CLASSES: Record<string, string> = {
   low: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
@@ -87,13 +81,19 @@ export function TaskListView({ tasks, sortField, sortDirection, onSortChange }: 
       </TableHeader>
       <TableBody>
         {tasks.map((task) => {
-          const status = getStatusDisplay(task.status)
           const priority = getPriorityDisplay(task.priority)
+          const statusColor = getStatusColor(task.statusColorKey)
           return (
             <TableRow key={task.id}>
               <TableCell>{task.title}</TableCell>
               <TableCell>
-                <Badge label={status.label} className={STATUS_BADGE_CLASSES[status.variant]} />
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    className="size-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: statusColor.dot }}
+                  />
+                  {task.statusName}
+                </span>
               </TableCell>
               <TableCell>
                 <Badge label={priority.label} className={PRIORITY_BADGE_CLASSES[priority.variant]} />
@@ -101,7 +101,9 @@ export function TaskListView({ tasks, sortField, sortDirection, onSortChange }: 
               <TableCell>{task.departmentName ?? '-'}</TableCell>
               <TableCell>
                 {task.createdByUserName}
-                {task.assignedToUserName ? ` / ${task.assignedToUserName}` : ''}
+                {task.assignedUsers?.length
+                  ? ` / ${task.assignedUsers.map((user) => user.fullName).join(', ')}`
+                  : ''}
               </TableCell>
               <TableCell>{dateFormatter.format(new Date(task.createdAt))}</TableCell>
             </TableRow>

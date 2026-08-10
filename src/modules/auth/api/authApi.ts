@@ -5,6 +5,7 @@ export interface AuthResponse {
   fullName: string
   email: string
   role: 'Admin' | 'User'
+  mustChangePassword: boolean
 }
 
 export function login(email: string, password: string): Promise<AuthResponse> {
@@ -22,5 +23,15 @@ export function register(
   return apiFetch<AuthResponse>('/api/auth/register', {
     method: 'POST',
     body: { fullName, email, password },
+  })
+}
+
+export function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  return apiFetch<void>('/api/auth/change-password', {
+    method: 'POST',
+    body: { currentPassword, newPassword },
   })
 }

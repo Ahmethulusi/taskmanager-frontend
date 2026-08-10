@@ -5,10 +5,10 @@ export function getTasks(): Promise<TaskDto[]> {
   return apiFetch<TaskDto[]>('/api/tasks')
 }
 
-export function updateTaskStatus(taskId: string, status: string): Promise<TaskDto> {
+export function updateTaskStatus(taskId: string, statusId: string): Promise<TaskDto> {
   return apiFetch<TaskDto>(`/api/tasks/${taskId}/status`, {
     method: 'PATCH',
-    body: { status },
+    body: { statusId },
   })
 }
 
@@ -17,7 +17,9 @@ export interface CreateTaskDto {
   description: string | null
   priority: string
   departmentId?: string | null
-  assignedToUserId?: string | null
+  projectId?: string | null
+  assignedUserIds: string[]
+  dueDate: string | null
 }
 
 export interface UpdateTaskDto {
@@ -25,6 +27,8 @@ export interface UpdateTaskDto {
   description: string | null
   priority: string
   departmentId?: string | null
+  projectId?: string | null
+  dueDate: string | null
 }
 
 export function createTask(dto: CreateTaskDto): Promise<TaskDto> {
@@ -47,9 +51,16 @@ export function deleteTask(taskId: string): Promise<void> {
   })
 }
 
-export function assignTask(taskId: string, assignedToUserId: string | null): Promise<TaskDto> {
+export function assignTask(taskId: string, assignedUserIds: string[]): Promise<TaskDto> {
   return apiFetch<TaskDto>(`/api/tasks/${taskId}/assign`, {
     method: 'PATCH',
-    body: { assignedToUserId },
+    body: { assignedUserIds },
+  })
+}
+
+export function updateTaskLabels(taskId: string, labelIds: string[]): Promise<TaskDto> {
+  return apiFetch<TaskDto>(`/api/tasks/${taskId}/labels`, {
+    method: 'PATCH',
+    body: { labelIds },
   })
 }

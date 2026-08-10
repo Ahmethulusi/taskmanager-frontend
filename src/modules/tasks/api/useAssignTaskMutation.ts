@@ -4,14 +4,15 @@ import { assignTask } from '@/modules/tasks/api/tasksApi'
 
 interface AssignTaskVariables {
   taskId: string
-  assignedToUserId: string | null
+  assignedUserIds: string[]
 }
 
 export function useAssignTaskMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ taskId, assignedToUserId }: AssignTaskVariables) => assignTask(taskId, assignedToUserId),
+    mutationFn: ({ taskId, assignedUserIds }: AssignTaskVariables) =>
+      assignTask(taskId, assignedUserIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
     },

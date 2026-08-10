@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 
 import { PageHeader } from '@/components/layout/PageHeader'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -17,10 +19,13 @@ import {
   filterAndSortTasks,
   type DateFilter,
   type PriorityFilter,
+  type ProjectFilter,
   type SortDirection,
   type SortField,
 } from '@/modules/tasks/utils/taskFilters'
 import { TaskBoardView } from '@/modules/tasks/views/TaskBoardView'
+import { useProjectsQuery } from '@/modules/projects/api/useProjectsQuery'
+import { useStatusesQuery } from '@/modules/statuses/api/useStatusesQuery'
 
 const PRIORITY_OPTIONS: { value: PriorityFilter; label: string }[] = [
   { value: 'all', label: 'Tümü' },
@@ -77,12 +82,63 @@ const SORT_OPTIONS: {
 ]
 
 export function TasksPage() {
-  const { data, isLoading, isError, error } = useTasksQuery()
+  const {
+    data,
+    isLoading: tasksLoading,
+    isError: tasksError,
+    error: tasksQueryError,
+  } = useTasksQuery()
+  const {
+    data: statuses,
+    isLoading: statusesLoading,
+    isError: statusesError,
+    error: statusesQueryError,
+  } = useStatusesQuery()
+  const { data: projects } = useProjectsQuery()
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const projectIdParam = searchParams.get('projectId')
+  const projectFilter: ProjectFilter = projectIdParam ?? 'all'
 
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all')
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [sortOption, setSortOption] = useState<SortOption>('default')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+
+  const isLoading = tasksLoading || statusesLoading
+  const isError = tasksError || statusesError
+  const error = tasksError ? tasksQueryError : statusesQueryError
+
+  const activeProject = projects?.find((project) => String(project.id) === projectIdParam)
+  const defaultProjectId =
+    projectIdParam && projectIdParam !== 'none' ? projectIdParam : undefined
+
+  function setProjectFilter(value: ProjectFilter) {
+    if (value === 'all') {
+      const next = new URLSearchParams(searchParams)
+      next.delete('projectId')
+      setSearchParams(next)
+    } else {
+      const next = new URLSearchParams(searchParams)
+      next.set('projectId', value)
+      setSearchParams(next)
+    }
+  }
+
+  function clearProjectFilter() {
+    const next = new URLSearchParams(searchParams)
+    next.delete('projectId')
+    setSearchParams(next)
+  }
+
+  const projectFilterOptions: { value: ProjectFilter; label: string }[] = [
+    { value: 'all', label: 'Tümü' },
+    { value: 'none', label: 'Projesiz' },
+    ...(projects?.map((project) => ({
+      value: String(project.id) as ProjectFilter,
+      label: project.name,
+    })) ?? []),
+  ]
 
   function renderContent() {
     if (isLoading) {
@@ -103,12 +159,27 @@ export function TasksPage() {
       data ?? [],
       priorityFilter,
       dateFilter,
+      projectFilter,
       selectedSort.field,
       selectedSort.direction
     )
 
     return (
       <div className="flex flex-col gap-4 p-4">
+        {activeProject && (
+          <Badge variant="secondary" className="h-7 w-fit gap-1.5 px-3 text-sm">
+            Proje: {activeProject.name}
+            <button
+              type="button"
+              onClick={clearProjectFilter}
+              className="ml-1 rounded-full hover:text-destructive"
+            >
+              <X className="size-3.5" />
+              <span className="sr-only">Proje filtresini temizle</span>
+            </button>
+          </Badge>
+        )}
+
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="priority-filter" className="text-base">
@@ -155,6 +226,28 @@ export function TasksPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
+            <Label htmlFor="project-filter" className="text-base">
+              Proje
+            </Label>
+            <Select
+              items={projectFilterOptions}
+              value={projectFilter}
+              onValueChange={(value) => setProjectFilter((value ?? 'all') as ProjectFilter)}
+            >
+              <SelectTrigger id="project-filter" className="h-10 w-52 text-base">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {projectFilterOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value} className="text-base">
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="sort-option" className="text-base">
               Sırala
             </Label>
@@ -177,7 +270,13 @@ export function TasksPage() {
           </div>
         </div>
 
-        <TaskBoardView tasks={tasks} />
+        {tasks.length === 0 ? (
+          <p className="p-4 text-base text-muted-foreground">
+            {defaultProjectId ? 'Bu projede henüz görev yok' : 'Görev bulunamadı'}
+          </p>
+        ) : (
+          <TaskBoardView tasks={tasks} statuses={statuses ?? []} />
+        )}
       </div>
     )
   }
@@ -196,7 +295,12 @@ export function TasksPage() {
 
       {renderContent()}
 
-      <TaskFormDialog mode="create" open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      <TaskFormDialog
+        mode="create"
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        defaultProjectId={defaultProjectId}
+      />
     </>
   )
 }

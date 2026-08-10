@@ -2,22 +2,38 @@ import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 
+import { DatePicker } from '@/components/shared/DatePicker'
+import { MultiSelectCheckList } from '@/components/shared/MultiSelectCheckList'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/AuthContext'
 import { useDepartmentsQuery } from '@/modules/departments/api/useDepartmentsQuery'
+import type { LabelDto } from '@/modules/labels/utils/types'
+import { useProjectsQuery } from '@/modules/projects/api/useProjectsQuery'
 import { useCreateTaskMutation } from '@/modules/tasks/api/useCreateTaskMutation'
+import { useUpdateTaskLabelsMutation } from '@/modules/tasks/api/useUpdateTaskLabelsMutation'
 import { useUpdateTaskMutation } from '@/modules/tasks/api/useUpdateTaskMutation'
+import { LabelPicker } from '@/modules/tasks/components/LabelPicker'
+import { getAssignableUserItems } from '@/modules/tasks/utils/assignableUsers'
 import { createTaskSchema, updateTaskSchema, type CreateTaskFormValues } from '@/modules/tasks/utils/schemas'
+import { toApiDueDate, toDateInputValue } from '@/modules/tasks/utils/dueDate'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 import { useUsersQuery } from '@/modules/users/api/useUsersQuery'
 
 const NO_DEPARTMENT = 'none'
-const UNASSIGNED = 'none'
+const NO_PROJECT = 'none'
+
+function toId(value: string | number | null | undefined): string | undefined {
+  if (value === null || value === undefined || value === '') {
+    return undefined
+  }
+  return String(value)
+}
 
 const PRIORITY_OPTIONS: { value: CreateTaskFormValues['priority']; label: string }[] = [
   { value: 'Dusuk', label: 'Düşük' },
@@ -30,15 +46,29 @@ interface TaskFormDialogProps {
   task?: TaskDto
   open: boolean
   onOpenChange: (open: boolean) => void
+  defaultProjectId?: string
 }
 
-export function TaskFormDialog({ mode, task, open, onOpenChange }: TaskFormDialogProps) {
+export function TaskFormDialog({
+  mode,
+  task,
+  open,
+  onOpenChange,
+  defaultProjectId,
+}: TaskFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         {/* Mounted fresh each time the dialog opens, so form state naturally starts clean
             from current props instead of needing a reset-on-open effect. */}
-        {open && <TaskFormFields mode={mode} task={task} onOpenChange={onOpenChange} />}
+        {open && (
+          <TaskFormFields
+            mode={mode}
+            task={task}
+            onOpenChange={onOpenChange}
+            defaultProjectId={defaultProjectId}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )
@@ -48,20 +78,40 @@ interface TaskFormFieldsProps {
   mode: 'create' | 'edit'
   task?: TaskDto
   onOpenChange: (open: boolean) => void
+  defaultProjectId?: string
 }
 
-function TaskFormFields({ mode, task, onOpenChange }: TaskFormFieldsProps) {
+function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskFormFieldsProps) {
   const { user } = useAuth()
   const { data: departments } = useDepartmentsQuery()
-  const showAssignField = mode === 'create' && user?.role === 'Admin'
+  const { data: projects } = useProjectsQuery()
   const { data: users } = useUsersQuery()
+  const showAssignField = mode === 'create' && user?.role === 'Admin'
 
-  const [assignedToUserId, setAssignedToUserId] = useState<string | null>(null)
+  const [assignedUserIds, setAssignedUserIds] = useState<string[]>(() => {
+    if (mode !== 'create' || !showAssignField || !defaultProjectId) {
+      return []
+    }
+    const project = projects?.find((p) => String(p.id) === toId(defaultProjectId))
+    return project?.members?.length ? project.members.map((member) => String(member.userId)) : []
+  })
+  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(() =>
+    mode === 'edit' && task ? toId(task.projectId) : toId(defaultProjectId)
+  )
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | undefined>(() =>
+    mode === 'edit' && task ? toId(task.departmentId) : undefined
+  )
+  const [selectedLabels, setSelectedLabels] = useState<LabelDto[]>(() =>
+    mode === 'edit' && task?.labels ? [...task.labels] : []
+  )
+  const [activeTab, setActiveTab] = useState('general')
   const [error, setError] = useState<string | null>(null)
 
   const createMutation = useCreateTaskMutation()
   const updateMutation = useUpdateTaskMutation()
-  const isPending = mode === 'create' ? createMutation.isPending : updateMutation.isPending
+  const updateLabelsMutation = useUpdateTaskLabelsMutation()
+  const isPending =
+    createMutation.isPending || updateMutation.isPending || updateLabelsMutation.isPending
 
   const {
     control,
@@ -76,32 +126,103 @@ function TaskFormFields({ mode, task, onOpenChange }: TaskFormFieldsProps) {
             title: task.title,
             description: task.description ?? '',
             priority: task.priority as CreateTaskFormValues['priority'],
-            departmentId: task.departmentId ?? undefined,
+            departmentId: toId(task.departmentId),
+            projectId: toId(task.projectId),
+            dueDate: toDateInputValue(task.dueDate),
           }
-        : { title: '', description: '', priority: undefined, departmentId: undefined },
+        : {
+            title: '',
+            description: '',
+            priority: undefined,
+            departmentId: undefined,
+            projectId: toId(defaultProjectId),
+            dueDate: '',
+          },
   })
+
+  const selectedProject = projects?.find((p) => String(p.id) === selectedProjectId)
+  const selectedDepartment = departments?.find((d) => String(d.id) === selectedDepartmentId)
+  const assignItems = getAssignableUserItems({
+    workspaceUsers: users,
+    projectMembers: selectedProject?.members,
+    departmentUsers: selectedDepartment?.users,
+    projectId: selectedProjectId,
+    departmentId: selectedDepartmentId,
+  })
+
+  function getAssignableIds(projectId: string | undefined, departmentId: string | undefined) {
+    const project = projects?.find((p) => String(p.id) === projectId)
+    const department = departments?.find((d) => String(d.id) === departmentId)
+    return getAssignableUserItems({
+      workspaceUsers: users,
+      projectMembers: project?.members,
+      departmentUsers: department?.users,
+      projectId,
+      departmentId,
+    }).map((item) => item.id)
+  }
+
+  function applyProjectMembers(projectId: string | undefined) {
+    if (!showAssignField) {
+      return
+    }
+    setSelectedProjectId(projectId)
+    if (projectId) {
+      setAssignedUserIds(getAssignableIds(projectId, selectedDepartmentId))
+      return
+    }
+    const allowedIds = new Set(getAssignableIds(undefined, selectedDepartmentId))
+    setAssignedUserIds((prev) => prev.filter((id) => allowedIds.has(id)))
+  }
+
+  function applyDepartmentFilter(departmentId: string | undefined) {
+    if (!showAssignField) {
+      return
+    }
+    setSelectedDepartmentId(departmentId)
+    const allowedIds = new Set(getAssignableIds(selectedProjectId, departmentId))
+    setAssignedUserIds((prev) => prev.filter((id) => allowedIds.has(id)))
+  }
 
   async function onSubmit(values: CreateTaskFormValues) {
     setError(null)
     try {
+      const labelIds = selectedLabels.map((label) => String(label.id))
+
       if (mode === 'create') {
-        await createMutation.mutateAsync({
+        const created = await createMutation.mutateAsync({
           title: values.title,
           description: values.description || null,
           priority: values.priority,
-          departmentId: values.departmentId || undefined,
-          assignedToUserId: showAssignField ? assignedToUserId : undefined,
+          departmentId: toId(values.departmentId),
+          projectId: toId(values.projectId) ?? null,
+          assignedUserIds: showAssignField ? assignedUserIds : [],
+          dueDate: toApiDueDate(values.dueDate),
         })
+        if (labelIds.length > 0) {
+          await updateLabelsMutation.mutateAsync({
+            taskId: String(created.id),
+            labelIds,
+          })
+        }
       } else if (task) {
-        await updateMutation.mutateAsync({
-          taskId: task.id,
-          dto: {
-            title: values.title,
-            description: values.description || null,
-            priority: values.priority,
-            departmentId: values.departmentId || undefined,
-          },
-        })
+        await Promise.all([
+          updateMutation.mutateAsync({
+            taskId: String(task.id),
+            dto: {
+              title: values.title,
+              description: values.description || null,
+              priority: values.priority,
+              departmentId: toId(values.departmentId),
+              projectId: toId(values.projectId) ?? null,
+              dueDate: toApiDueDate(values.dueDate),
+            },
+          }),
+          updateLabelsMutation.mutateAsync({
+            taskId: String(task.id),
+            labelIds,
+          }),
+        ])
       }
       onOpenChange(false)
     } catch (err) {
@@ -117,103 +238,183 @@ function TaskFormFields({ mode, task, onOpenChange }: TaskFormFieldsProps) {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3">
-        <div>
-          <Label htmlFor="title">Başlık</Label>
-          <Input id="title" {...register('title')} />
-          {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
-        </div>
+      <form
+        onSubmit={handleSubmit(onSubmit, (formErrors) => {
+          if (
+            formErrors.title ||
+            formErrors.description ||
+            formErrors.priority ||
+            formErrors.dueDate
+          ) {
+            setActiveTab('general')
+          }
+        })}
+        noValidate
+        className="flex flex-col gap-4"
+      >
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="w-full">
+            <TabsTrigger value="general">Genel</TabsTrigger>
+            <TabsTrigger value="assignment">Atama</TabsTrigger>
+          </TabsList>
 
-        <div>
-          <Label htmlFor="description">Açıklama</Label>
-          <Textarea id="description" {...register('description')} />
-          {errors.description && (
-            <p className="text-xs text-destructive">{errors.description.message}</p>
-          )}
-        </div>
+          <TabsContent value="general" className="grid gap-4 pt-2 sm:grid-cols-2">
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <Label htmlFor="title">Başlık</Label>
+              <Input id="title" {...register('title')} />
+              {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
+            </div>
 
-        <div>
-          <Label>Öncelik</Label>
-          <Controller
-            control={control}
-            name="priority"
-            render={({ field }) => (
-              <Select
-                items={PRIORITY_OPTIONS}
-                value={field.value ?? null}
-                onValueChange={field.onChange}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Öncelik seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRIORITY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <Label htmlFor="description">Açıklama</Label>
+              <Textarea id="description" rows={3} {...register('description')} />
+              {errors.description && (
+                <p className="text-xs text-destructive">{errors.description.message}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Öncelik</Label>
+              <Controller
+                control={control}
+                name="priority"
+                render={({ field }) => (
+                  <Select
+                    items={PRIORITY_OPTIONS}
+                    value={field.value ?? null}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Öncelik seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRIORITY_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.priority && (
+                <p className="text-xs text-destructive">{errors.priority.message}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="dueDate">Bitiş Tarihi</Label>
+              <Controller
+                control={control}
+                name="dueDate"
+                render={({ field }) => (
+                  <DatePicker
+                    id="dueDate"
+                    value={field.value ?? null}
+                    onChange={field.onChange}
+                    disabled={isPending}
+                  />
+                )}
+              />
+              {errors.dueDate && (
+                <p className="text-xs text-destructive">{errors.dueDate.message}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <Label>Etiketler</Label>
+              <LabelPicker selectedLabels={selectedLabels} onChange={setSelectedLabels} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="assignment" className="grid gap-4 pt-2 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label>Departman</Label>
+              <Controller
+                control={control}
+                name="departmentId"
+                render={({ field }) => (
+                  <Select
+                    items={[
+                      { value: NO_DEPARTMENT, label: 'Departman Yok' },
+                      ...(departments?.map((department) => ({
+                        value: toId(department.id)!,
+                        label: department.name,
+                      })) ?? []),
+                    ]}
+                    value={field.value ?? NO_DEPARTMENT}
+                    onValueChange={(value) => {
+                      const nextValue = value === NO_DEPARTMENT ? undefined : toId(value)
+                      field.onChange(nextValue)
+                      applyDepartmentFilter(nextValue)
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Departman seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_DEPARTMENT}>Departman Yok</SelectItem>
+                      {departments?.map((department) => (
+                        <SelectItem key={toId(department.id)} value={toId(department.id)!}>
+                          {department.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Proje</Label>
+              <Controller
+                control={control}
+                name="projectId"
+                render={({ field }) => (
+                  <Select
+                    items={[
+                      { value: NO_PROJECT, label: 'Proje Yok' },
+                      ...(projects?.map((project) => ({
+                        value: toId(project.id)!,
+                        label: project.name,
+                      })) ?? []),
+                    ]}
+                    value={field.value ?? NO_PROJECT}
+                    onValueChange={(value) => {
+                      const nextValue = value === NO_PROJECT ? undefined : toId(value)
+                      field.onChange(nextValue)
+                      applyProjectMembers(nextValue)
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Proje seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_PROJECT}>Proje Yok</SelectItem>
+                      {projects?.map((project) => (
+                        <SelectItem key={toId(project.id)} value={toId(project.id)!}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            {showAssignField && (
+              <div className="flex flex-col gap-2 sm:col-span-2">
+                <Label>Ata</Label>
+                <MultiSelectCheckList
+                  items={assignItems}
+                  selectedIds={assignedUserIds}
+                  onChange={setAssignedUserIds}
+                  disabled={isPending}
+                />
+              </div>
             )}
-          />
-          {errors.priority && <p className="text-xs text-destructive">{errors.priority.message}</p>}
-        </div>
-
-        <div>
-          <Label>Departman</Label>
-          <Controller
-            control={control}
-            name="departmentId"
-            render={({ field }) => (
-              <Select
-                items={[
-                  { value: NO_DEPARTMENT, label: 'Departman Yok' },
-                  ...(departments?.map((department) => ({ value: department.id, label: department.name })) ?? []),
-                ]}
-                value={field.value ?? NO_DEPARTMENT}
-                onValueChange={(value) => field.onChange(value === NO_DEPARTMENT ? undefined : value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Departman seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_DEPARTMENT}>Departman Yok</SelectItem>
-                  {departments?.map((department) => (
-                    <SelectItem key={department.id} value={department.id}>
-                      {department.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </div>
-
-        {showAssignField && (
-          <div>
-            <Label>Ata</Label>
-            <Select
-              items={[
-                { value: UNASSIGNED, label: 'Atanmadı' },
-                ...(users?.map((u) => ({ value: u.id, label: u.fullName })) ?? []),
-              ]}
-              value={assignedToUserId ?? UNASSIGNED}
-              onValueChange={(value) => setAssignedToUserId(value === UNASSIGNED ? null : value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Kullanıcı seçin" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={UNASSIGNED}>Atanmadı</SelectItem>
-                {users?.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.fullName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter>
           <Button type="submit" disabled={isPending}>

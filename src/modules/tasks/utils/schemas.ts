@@ -5,6 +5,8 @@ export const createTaskSchema = z.object({
   description: z.string().max(2000).optional(),
   priority: z.enum(['Dusuk', 'Orta', 'Yuksek']),
   departmentId: z.string().optional(),
+  projectId: z.string().optional(),
+  dueDate: z.string().optional().nullable(),
 })
 
 export type CreateTaskFormValues = z.infer<typeof createTaskSchema>
@@ -14,6 +16,8 @@ export const updateTaskSchema = z.object({
   description: z.string().max(2000).optional(),
   priority: z.enum(['Dusuk', 'Orta', 'Yuksek']),
   departmentId: z.string().optional(),
+  projectId: z.string().optional(),
+  dueDate: z.string().optional().nullable(),
 })
 
 export type UpdateTaskFormValues = z.infer<typeof updateTaskSchema>

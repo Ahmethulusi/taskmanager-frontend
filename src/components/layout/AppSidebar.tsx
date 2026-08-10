@@ -1,5 +1,14 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Building2, ListChecks, LogOut, SquareKanban, Users, type LucideIcon } from 'lucide-react'
+import {
+  Building2,
+  FolderKanban,
+  ListChecks,
+  LogOut,
+  SquareKanban,
+  Tags,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 
 import { UserAvatar } from '@/components/UserAvatar'
 import { Button } from '@/components/ui/button'
@@ -26,6 +35,8 @@ const NAV_ITEMS: NavItem[] = [{ to: '/tasks', label: 'Görevler', icon: ListChec
 const ADMIN_NAV_ITEMS: NavItem[] = [
   { to: '/users', label: 'Kullanıcılar', icon: Users },
   { to: '/departments', label: 'Departmanlar', icon: Building2 },
+  { to: '/projects', label: 'Projeler', icon: FolderKanban },
+  { to: '/statuses', label: 'Durumlar', icon: Tags },
 ]
 
 export function AppSidebar() {

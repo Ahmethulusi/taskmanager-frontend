@@ -12,14 +12,15 @@ import {
 import { useUpdateTaskStatusMutation } from '@/modules/tasks/api/useUpdateTaskStatusMutation'
 import { TaskCardDragOverlay } from '@/modules/tasks/components/TaskCard'
 import { TaskColumn } from '@/modules/tasks/components/TaskColumn'
-import { TASK_COLUMNS } from '@/modules/tasks/utils/columns'
+import type { TaskStatusDto } from '@/modules/statuses/utils/types'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 
 interface TaskBoardViewProps {
   tasks: TaskDto[]
+  statuses: TaskStatusDto[]
 }
 
-export function TaskBoardView({ tasks }: TaskBoardViewProps) {
+export function TaskBoardView({ tasks, statuses }: TaskBoardViewProps) {
   const { mutate } = useUpdateTaskStatusMutation()
   const [error, setError] = useState<string | null>(null)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
@@ -28,7 +29,7 @@ export function TaskBoardView({ tasks }: TaskBoardViewProps) {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   )
 
-  const activeTask = tasks.find((task) => task.id === activeTaskId) ?? null
+  const activeTask = tasks.find((task) => String(task.id) === activeTaskId) ?? null
 
   function handleDragStart(event: DragStartEvent) {
     setActiveTaskId(String(event.active.id))
@@ -42,15 +43,15 @@ export function TaskBoardView({ tasks }: TaskBoardViewProps) {
       return
     }
 
-    const fromStatus = active.data.current?.status
-    const toStatus = String(over.id)
-    if (toStatus === fromStatus) {
+    const fromStatusId = active.data.current?.statusId
+    const toStatusId = String(over.id)
+    if (toStatusId === String(fromStatusId)) {
       return
     }
 
     setError(null)
     mutate(
-      { taskId: String(active.id), status: toStatus },
+      { taskId: String(active.id), statusId: toStatusId },
       {
         onError: (err) => {
           setError(err instanceof Error ? err.message : 'Durum güncellenemedi')
@@ -68,17 +69,22 @@ export function TaskBoardView({ tasks }: TaskBoardViewProps) {
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveTaskId(null)}
       >
-        <div className="flex gap-4">
-          {TASK_COLUMNS.map((column) => (
-            <TaskColumn
-              key={column.status}
-              status={column.status}
-              label={column.label}
-              tasks={tasks.filter((task) => task.status === column.status)}
-            />
-          ))}
+        <div className="overflow-x-auto">
+          <div className="flex min-w-min gap-4 p-1">
+            {statuses.map((status) => (
+              <TaskColumn
+                key={String(status.id)}
+                statusId={String(status.id)}
+                label={status.name}
+                colorKey={status.colorKey}
+                tasks={tasks.filter((task) => String(task.statusId) === String(status.id))}
+              />
+            ))}
+          </div>
         </div>
-        <DragOverlay>{activeTask && <TaskCardDragOverlay task={activeTask} />}</DragOverlay>
+        <DragOverlay dropAnimation={null}>
+          {activeTask && <TaskCardDragOverlay task={activeTask} />}
+        </DragOverlay>
       </DndContext>
     </div>
   )

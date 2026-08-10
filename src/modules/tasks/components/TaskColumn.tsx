@@ -1,45 +1,48 @@
 import { useDroppable } from '@dnd-kit/core'
 
+import { getStatusColor } from '@/lib/statusColors'
+import { cn } from '@/lib/utils'
 import { TaskCard } from '@/modules/tasks/components/TaskCard'
-import { getStatusDisplay } from '@/modules/tasks/utils/taskDisplay'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 
-const STATUS_SURFACE_CLASSES: Record<string, string> = {
-  pending: 'border-status-pending-dot/40 bg-status-pending-bg',
-  'in-progress': 'border-status-progress-dot/40 bg-status-progress-bg',
-  done: 'border-status-done-dot/40 bg-status-done-bg',
-  unknown: 'border-border bg-muted/30',
-}
-
-const STATUS_DOT_CLASSES: Record<string, string> = {
-  pending: 'bg-status-pending-dot',
-  'in-progress': 'bg-status-progress-dot',
-  done: 'bg-status-done-dot',
-  unknown: 'bg-muted-foreground',
-}
-
 interface TaskColumnProps {
-  status: string
+  statusId: string
   label: string
+  colorKey: string
   tasks: TaskDto[]
 }
 
-export function TaskColumn({ status, label, tasks }: TaskColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({ id: status })
-  const variant = getStatusDisplay(status).variant
+export function TaskColumn({ statusId, label, colorKey, tasks }: TaskColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: statusId })
+  const color = getStatusColor(colorKey)
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-1 flex-col rounded-lg border border-dashed p-4 shadow-[0_12px_20px_-14px_rgb(0_0_0/0.45)] ${
-        STATUS_SURFACE_CLASSES[variant]
-      } ${isOver ? 'ring-2 ring-primary/40' : ''}`}
+      className={cn(
+        'flex min-h-0 min-w-[17.5rem] flex-1 flex-col rounded-lg border border-dashed p-4 shadow-[0_12px_20px_-14px_rgb(0_0_0/0.45)]',
+        isOver && 'border-solid border-primary/50 bg-primary/5'
+      )}
+      style={{
+        backgroundColor: isOver ? undefined : color.bg,
+        borderColor: isOver ? undefined : `${color.dot}66`,
+      }}
     >
-      <div className="mb-4 flex items-center gap-2 font-heading text-base font-medium">
-        <span className={`size-2.5 shrink-0 rounded-full ${STATUS_DOT_CLASSES[variant]}`} />
+      <div className="mb-4 flex shrink-0 items-center gap-2 font-heading text-base font-medium">
+        <span
+          className="size-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: color.dot }}
+        />
         {label} ({tasks.length})
       </div>
-      <div className="flex-1 space-y-3 overflow-y-auto" style={{ maxHeight: '65vh' }}>
+      {/*
+        overflow-y-auto clips children; keep padding >= card border width so
+        top/side borders stay visible (especially during dnd compositing).
+      */}
+      <div
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden p-1"
+        style={{ maxHeight: '65vh' }}
+      >
         {tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground">Bu durumda görev yok</p>
         ) : (

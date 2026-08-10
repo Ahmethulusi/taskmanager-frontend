@@ -2,6 +2,8 @@ import type { TaskDto } from '@/modules/tasks/utils/types'
 
 export type PriorityFilter = 'all' | 'Dusuk' | 'Orta' | 'Yuksek'
 export type DateFilter = 'all' | 'today' | 'thisWeek' | 'thisMonth'
+/** `'all'` | `'none'` (projesi olmayan) | project id */
+export type ProjectFilter = 'all' | 'none' | (string & {})
 export type SortField = 'createdAt' | 'priority' | null
 export type SortDirection = 'asc' | 'desc'
 
@@ -9,6 +11,13 @@ const PRIORITY_ORDER: Record<string, number> = {
   Dusuk: 0,
   Orta: 1,
   Yuksek: 2,
+}
+
+function toId(value: string | number | null | undefined): string | null {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+  return String(value)
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -47,10 +56,24 @@ function matchesDateFilter(createdAt: Date, dateFilter: DateFilter, now: Date): 
   }
 }
 
+function matchesProjectFilter(task: TaskDto, projectFilter: ProjectFilter): boolean {
+  if (projectFilter === 'all') {
+    return true
+  }
+
+  const projectId = toId(task.projectId)
+  if (projectFilter === 'none') {
+    return projectId === null
+  }
+
+  return projectId === String(projectFilter)
+}
+
 export function filterAndSortTasks(
   tasks: TaskDto[],
   priorityFilter: PriorityFilter,
   dateFilter: DateFilter,
+  projectFilter: ProjectFilter,
   sortField: SortField,
   sortDirection: SortDirection
 ): TaskDto[] {
@@ -58,6 +81,9 @@ export function filterAndSortTasks(
 
   const filtered = tasks.filter((task) => {
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) {
+      return false
+    }
+    if (!matchesProjectFilter(task, projectFilter)) {
       return false
     }
     return matchesDateFilter(new Date(task.createdAt), dateFilter, now)
