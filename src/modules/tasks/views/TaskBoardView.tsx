@@ -61,16 +61,16 @@ export function TaskBoardView({ tasks, statuses }: TaskBoardViewProps) {
   }
 
   return (
-    <div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+      {error && <p className="mb-2 shrink-0 text-sm text-destructive">{error}</p>}
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveTaskId(null)}
       >
-        <div className="overflow-x-auto">
-          <div className="flex min-w-min gap-4 p-1">
+        <div className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
+          <div className="grid h-full w-max auto-cols-[17.5rem] grid-flow-col gap-4 p-1 pb-2">
             {statuses.map((status) => (
               <TaskColumn
                 key={String(status.id)}

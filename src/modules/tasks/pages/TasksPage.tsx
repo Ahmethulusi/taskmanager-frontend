@@ -165,9 +165,9 @@ export function TasksPage() {
     )
 
     return (
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
         {activeProject && (
-          <Badge variant="secondary" className="h-7 w-fit gap-1.5 px-3 text-sm">
+          <Badge variant="secondary" className="h-7 w-fit shrink-0 gap-1.5 px-3 text-sm">
             Proje: {activeProject.name}
             <button
               type="button"
@@ -180,7 +180,7 @@ export function TasksPage() {
           </Badge>
         )}
 
-        <div className="flex flex-wrap items-end gap-4">
+        <div className="flex shrink-0 flex-wrap items-end gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="priority-filter" className="text-base">
               Öncelik
@@ -275,14 +275,16 @@ export function TasksPage() {
             {defaultProjectId ? 'Bu projede henüz görev yok' : 'Görev bulunamadı'}
           </p>
         ) : (
-          <TaskBoardView tasks={tasks} statuses={statuses ?? []} />
+          <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+            <TaskBoardView tasks={tasks} statuses={statuses ?? []} />
+          </div>
         )}
       </div>
     )
   }
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
         title="Görevler"
         actions={
@@ -293,7 +295,7 @@ export function TasksPage() {
         }
       />
 
-      {renderContent()}
+      <div className="min-h-0 flex-1 overflow-hidden">{renderContent()}</div>
 
       <TaskFormDialog
         mode="create"
@@ -301,6 +303,6 @@ export function TasksPage() {
         onOpenChange={setCreateDialogOpen}
         defaultProjectId={defaultProjectId}
       />
-    </>
+    </div>
   )
 }

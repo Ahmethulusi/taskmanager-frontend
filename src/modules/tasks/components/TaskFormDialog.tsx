@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
-
 import { DatePicker } from '@/components/shared/DatePicker'
 import { MultiSelectCheckList } from '@/components/shared/MultiSelectCheckList'
 import { Button } from '@/components/ui/button'
@@ -15,6 +14,7 @@ import { useAuth } from '@/lib/AuthContext'
 import { useDepartmentsQuery } from '@/modules/departments/api/useDepartmentsQuery'
 import type { LabelDto } from '@/modules/labels/utils/types'
 import { useProjectsQuery } from '@/modules/projects/api/useProjectsQuery'
+import { useAssignTaskMutation } from '@/modules/tasks/api/useAssignTaskMutation'
 import { useCreateTaskMutation } from '@/modules/tasks/api/useCreateTaskMutation'
 import { useUpdateTaskLabelsMutation } from '@/modules/tasks/api/useUpdateTaskLabelsMutation'
 import { useUpdateTaskMutation } from '@/modules/tasks/api/useUpdateTaskMutation'
@@ -86,10 +86,13 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
   const { data: departments } = useDepartmentsQuery()
   const { data: projects } = useProjectsQuery()
   const { data: users } = useUsersQuery()
-  const showAssignField = mode === 'create' && user?.role === 'Admin'
+  const showAssignField = user?.role === 'Admin'
 
   const [assignedUserIds, setAssignedUserIds] = useState<string[]>(() => {
-    if (mode !== 'create' || !showAssignField || !defaultProjectId) {
+    if (mode === 'edit' && task) {
+      return task.assignedUsers?.map((assigned) => String(assigned.id)) ?? []
+    }
+    if (!showAssignField || !defaultProjectId) {
       return []
     }
     const project = projects?.find((p) => String(p.id) === toId(defaultProjectId))
@@ -110,8 +113,12 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
   const createMutation = useCreateTaskMutation()
   const updateMutation = useUpdateTaskMutation()
   const updateLabelsMutation = useUpdateTaskLabelsMutation()
+  const assignMutation = useAssignTaskMutation()
   const isPending =
-    createMutation.isPending || updateMutation.isPending || updateLabelsMutation.isPending
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    updateLabelsMutation.isPending ||
+    assignMutation.isPending
 
   const {
     control,
@@ -163,10 +170,10 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
   }
 
   function applyProjectMembers(projectId: string | undefined) {
+    setSelectedProjectId(projectId)
     if (!showAssignField) {
       return
     }
-    setSelectedProjectId(projectId)
     if (projectId) {
       setAssignedUserIds(getAssignableIds(projectId, selectedDepartmentId))
       return
@@ -176,10 +183,10 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
   }
 
   function applyDepartmentFilter(departmentId: string | undefined) {
+    setSelectedDepartmentId(departmentId)
     if (!showAssignField) {
       return
     }
-    setSelectedDepartmentId(departmentId)
     const allowedIds = new Set(getAssignableIds(selectedProjectId, departmentId))
     setAssignedUserIds((prev) => prev.filter((id) => allowedIds.has(id)))
   }
@@ -206,22 +213,31 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
           })
         }
       } else if (task) {
+        const taskId = String(task.id)
+        const departmentId = toId(values.departmentId ?? selectedDepartmentId) ?? null
+        const projectId = toId(values.projectId ?? selectedProjectId) ?? null
+
+        // update önce bitmeli; assign paralel çalışırsa backend eski task'ı
+        // kaydedip department/project alanlarını null'a çekebiliyor.
+        await updateMutation.mutateAsync({
+          taskId,
+          dto: {
+            title: values.title,
+            description: values.description || null,
+            priority: values.priority,
+            departmentId,
+            projectId,
+            dueDate: toApiDueDate(values.dueDate),
+          },
+        })
         await Promise.all([
-          updateMutation.mutateAsync({
-            taskId: String(task.id),
-            dto: {
-              title: values.title,
-              description: values.description || null,
-              priority: values.priority,
-              departmentId: toId(values.departmentId),
-              projectId: toId(values.projectId) ?? null,
-              dueDate: toApiDueDate(values.dueDate),
-            },
-          }),
           updateLabelsMutation.mutateAsync({
-            taskId: String(task.id),
+            taskId,
             labelIds,
           }),
+          ...(showAssignField
+            ? [assignMutation.mutateAsync({ taskId, assignedUserIds })]
+            : []),
         ])
       }
       onOpenChange(false)
@@ -258,7 +274,7 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
             <TabsTrigger value="assignment">Atama</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="general" className="grid gap-4 pt-2 sm:grid-cols-2">
+          <TabsContent value="general" keepMounted className="grid gap-4 pt-2 sm:grid-cols-2">
             <div className="flex flex-col gap-2 sm:col-span-2">
               <Label htmlFor="title">Başlık</Label>
               <Input id="title" {...register('title')} />
@@ -327,7 +343,7 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
             </div>
           </TabsContent>
 
-          <TabsContent value="assignment" className="grid gap-4 pt-2 sm:grid-cols-2">
+          <TabsContent value="assignment" keepMounted className="grid gap-4 pt-2 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
               <Label>Departman</Label>
               <Controller

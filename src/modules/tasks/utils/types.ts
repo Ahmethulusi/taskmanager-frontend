@@ -24,4 +24,5 @@ export interface TaskDto {
   assignedUsers: TaskAssignedUser[]
   dueDate: string | null
   labels: LabelDto[]
+  commentCount: number
 }

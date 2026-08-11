@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { DEFAULT_PROJECT_ICON } from '@/lib/projectIcons'
 import { useCreateProjectMutation } from '@/modules/projects/api/useCreateProjectMutation'
 import { useUpdateProjectMutation } from '@/modules/projects/api/useUpdateProjectMutation'
+import { IconPicker } from '@/modules/projects/components/IconPicker'
 import { ProjectMembersEditor } from '@/modules/projects/components/ProjectMembersEditor'
 import { projectSchema, type ProjectFormValues } from '@/modules/projects/utils/schemas'
 import type { ProjectDto, ProjectMemberInput } from '@/modules/projects/utils/types'
@@ -32,7 +35,7 @@ export function ProjectFormDialog({
 }: ProjectFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-2xl">
         {open && (
           <ProjectFormFields mode={mode} project={project} onOpenChange={onOpenChange} />
         )}
@@ -60,9 +63,11 @@ function ProjectFormFields({ mode, project, onOpenChange }: ProjectFormFieldsPro
         })) ?? []
       : []
   )
+  const [activeTab, setActiveTab] = useState('general')
   const [error, setError] = useState<string | null>(null)
 
   const {
+    control,
     register,
     handleSubmit,
     formState: { errors },
@@ -73,13 +78,14 @@ function ProjectFormFields({ mode, project, onOpenChange }: ProjectFormFieldsPro
         ? {
             name: project.name,
             description: project.description ?? '',
+            iconKey: project.iconKey ?? DEFAULT_PROJECT_ICON,
             members:
               project.members?.map((member) => ({
                 userId: toId(member.userId),
                 role: member.role,
               })) ?? [],
           }
-        : { name: '', description: '', members: [] },
+        : { name: '', description: '', iconKey: DEFAULT_PROJECT_ICON, members: [] },
   })
 
   async function onSubmit(values: ProjectFormValues) {
@@ -87,6 +93,7 @@ function ProjectFormFields({ mode, project, onOpenChange }: ProjectFormFieldsPro
     const dto = {
       name: values.name,
       description: values.description?.trim() ? values.description : null,
+      iconKey: values.iconKey ?? null,
       members,
     }
 
@@ -110,31 +117,57 @@ function ProjectFormFields({ mode, project, onOpenChange }: ProjectFormFieldsPro
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-2 sm:col-span-2">
-          <Label htmlFor="project-name">Ad</Label>
-          <Input id="project-name" {...register('name')} />
-          {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-        </div>
+      <form
+        onSubmit={handleSubmit(onSubmit, (formErrors) => {
+          if (formErrors.name || formErrors.description) {
+            setActiveTab('general')
+          }
+        })}
+        noValidate
+        className="flex flex-col gap-4"
+      >
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="w-full">
+            <TabsTrigger value="general">Genel</TabsTrigger>
+            <TabsTrigger value="icon">İkon</TabsTrigger>
+            <TabsTrigger value="members">Üyeler</TabsTrigger>
+          </TabsList>
 
-        <div className="flex flex-col gap-2 sm:col-span-2">
-          <Label htmlFor="project-description">Açıklama</Label>
-          <Textarea id="project-description" rows={3} {...register('description')} />
-          {errors.description && (
-            <p className="text-xs text-destructive">{errors.description.message}</p>
-          )}
-        </div>
+          <TabsContent value="general" keepMounted className="grid gap-4 pt-2 sm:grid-cols-2">
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <Label htmlFor="project-name">Ad</Label>
+              <Input id="project-name" {...register('name')} />
+              {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+            </div>
 
-        <div className="flex flex-col gap-2 sm:col-span-2">
-          <Label>Üyeler</Label>
-          <ProjectMembersEditor
-            members={members} 
-            onChange={setMembers}
-            disabled={isPending}
-          />
-        </div>
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <Label htmlFor="project-description">Açıklama</Label>
+              <Textarea id="project-description" rows={4} {...register('description')} />
+              {errors.description && (
+                <p className="text-xs text-destructive">{errors.description.message}</p>
+              )}
+            </div>
+          </TabsContent>
 
-        <DialogFooter className="sm:col-span-2">
+          <TabsContent value="icon" keepMounted className="pt-2">
+            <Controller
+              control={control}
+              name="iconKey"
+              render={({ field }) => (
+                <IconPicker
+                  selectedKey={field.value ?? DEFAULT_PROJECT_ICON}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </TabsContent>
+
+          <TabsContent value="members" keepMounted className="pt-2">
+            <ProjectMembersEditor members={members} onChange={setMembers} disabled={isPending} />
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter>
           <Button type="submit" disabled={isPending}>
             {mode === 'create' ? 'Oluştur' : 'Kaydet'}
           </Button>

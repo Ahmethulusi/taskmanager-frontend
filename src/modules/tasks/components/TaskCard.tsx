@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useDraggable } from '@dnd-kit/core'
-import { GripVertical, MoreVertical, Calendar, FolderKanban } from 'lucide-react'
+import { GripVertical, MoreVertical, Calendar, FolderKanban, MessageCircle } from 'lucide-react'
 
 import { UserAvatar } from '@/components/UserAvatar'
 import { Badge } from '@/components/ui/badge'
@@ -268,6 +268,12 @@ function TaskCardBody({ task, action, showDragHandle = false }: TaskCardBodyProp
           <div className="flex items-center gap-1">
             <Calendar className="size-3.5 shrink-0" />
             <span>{dueDateFormatter.format(new Date(task.dueDate))}</span>
+          </div>
+        )}
+        {task.commentCount > 0 && (
+          <div className="flex items-center gap-1">
+            <MessageCircle className="size-3.5 shrink-0" />
+            <span>{task.commentCount}</span>
           </div>
         )}
       </div>

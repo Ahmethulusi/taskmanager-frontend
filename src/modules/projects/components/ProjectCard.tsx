@@ -1,17 +1,5 @@
-import {
-  Briefcase,
-  Camera,
-  Layers,
-  Lightbulb,
-  Megaphone,
-  MoreVertical,
-  Pencil,
-  Rocket,
-  Sparkles,
-  Target,
-  Trash2,
-  Users,
-} from 'lucide-react'
+import { createElement } from 'react'
+import { ListChecks, MoreVertical, Pencil, Trash2, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { Card } from '@/components/ui/card'
@@ -23,23 +11,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { getProjectColor } from '@/lib/projectColors'
+import { getProjectIcon } from '@/lib/projectIcons'
 import type { ProjectDto } from '@/modules/projects/utils/types'
-
-const PROJECT_ICONS = [Rocket, Camera, Megaphone, Briefcase, Layers, Sparkles, Target, Lightbulb]
-
-function hashString(value: string): number {
-  let hash = 0
-  for (let i = 0; i < value.length; i++) {
-    hash = (hash * 31 + value.charCodeAt(i)) >>> 0
-  }
-  return hash
-}
-
-function renderProjectIcon(projectId: string, className: string, color: string) {
-  const hash = hashString(projectId)
-  const ProjectIcon = PROJECT_ICONS[hash % PROJECT_ICONS.length]
-  return <ProjectIcon className={className} style={{ color }} />
-}
 
 interface ProjectCardProps {
   project: ProjectDto
@@ -53,48 +26,62 @@ export function ProjectCard({ project, taskCount, onEdit, onDelete }: ProjectCar
   const color = getProjectColor(project.id)
 
   return (
-    <Card
-      onClick={() => navigate(`/tasks?projectId=${project.id}`)}
-      className="flex h-56 cursor-pointer flex-col justify-between p-4 transition-shadow hover:shadow-md"
-    >
+    <Card className="group flex h-56 flex-col justify-between p-4 transition-colors duration-200 hover:bg-muted">
       <div className="flex items-start justify-between">
         <div
-          className="flex size-10 items-center justify-center rounded-lg"
+          className="flex size-10 origin-left items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-115"
           style={{ backgroundColor: color.bg }}
         >
-          {renderProjectIcon(project.id, 'size-5', color.accent)}
+          {createElement(getProjectIcon(project.iconKey), {
+            className: 'size-5',
+            style: { color: color.accent },
+          })}
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="cursor-pointer"
-                onClick={(e) => e.stopPropagation()}
-              />
-            }
+        <div className="flex items-center">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="cursor-pointer hover:bg-background dark:hover:bg-card"
+            onClick={() => navigate(`/tasks?projectId=${project.id}`)}
           >
-            <MoreVertical />
-            <span className="sr-only">İşlemler</span>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onClick={onEdit}>
-              <Pencil />
-              Düzenle
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" onClick={onDelete}>
-              <Trash2 />
-              Sil
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <ListChecks />
+            <span className="sr-only">Görevleri görüntüle</span>
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="cursor-pointer hover:bg-background dark:hover:bg-card"
+                />
+              }
+            >
+              <MoreVertical />
+              <span className="sr-only">İşlemler</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil />
+                Düzenle
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                <Trash2 />
+                Sil
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="flex flex-col gap-1">
-        <h3 className="font-heading text-base font-semibold text-foreground">{project.name}</h3>
+        <h3 className="w-fit origin-left font-heading text-base font-semibold text-foreground transition-transform duration-200 group-hover:scale-110">
+          {project.name}
+        </h3>
         <p className="line-clamp-2 text-sm text-muted-foreground">
           {project.description || 'Açıklama yok'}
         </p>

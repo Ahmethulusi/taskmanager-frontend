@@ -10,6 +10,7 @@ export interface ProjectDto {
   id: string
   name: string
   description: string | null
+  iconKey: string
   createdAt: string
   members: ProjectMemberDto[]
 }
@@ -22,11 +23,13 @@ export interface ProjectMemberInput {
 export interface CreateProjectDto {
   name: string
   description: string | null
+  iconKey: string | null
   members: ProjectMemberInput[]
 }
 
 export interface UpdateProjectDto {
   name: string
   description: string | null
+  iconKey: string | null
   members: ProjectMemberInput[]
 }
