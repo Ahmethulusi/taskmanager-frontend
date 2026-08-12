@@ -21,7 +21,14 @@ import { useAssignTaskMutation } from '@/modules/tasks/api/useAssignTaskMutation
 import { useCreateTaskMutation } from '@/modules/tasks/api/useCreateTaskMutation'
 import { useUpdateTaskLabelsMutation } from '@/modules/tasks/api/useUpdateTaskLabelsMutation'
 import { useUpdateTaskMutation } from '@/modules/tasks/api/useUpdateTaskMutation'
+import { AttachmentList } from '@/modules/attachments/components/AttachmentList'
+import {
+  confirmUpload,
+  presignUpload,
+  uploadToR2,
+} from '@/modules/attachments/api/attachmentsApi'
 import { LabelPicker } from '@/modules/tasks/components/LabelPicker'
+import { PendingFilesPicker } from '@/modules/tasks/components/PendingFilesPicker'
 import { getAssignableUserItems } from '@/modules/tasks/utils/assignableUsers'
 import { createTaskSchema, updateTaskSchema, type CreateTaskFormValues } from '@/modules/tasks/utils/schemas'
 import { toApiDueDate, toDateInputValue } from '@/modules/tasks/utils/dueDate'
@@ -151,8 +158,10 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
   const [selectedLabels, setSelectedLabels] = useState<LabelDto[]>(() =>
     mode === 'edit' && task?.labels ? [...task.labels] : []
   )
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [activeTab, setActiveTab] = useState('general')
   const [error, setError] = useState<string | null>(null)
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false)
 
   const createMutation = useCreateTaskMutation()
   const updateMutation = useUpdateTaskMutation()
@@ -162,7 +171,8 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
     createMutation.isPending ||
     updateMutation.isPending ||
     updateLabelsMutation.isPending ||
-    assignMutation.isPending
+    assignMutation.isPending ||
+    isUploadingFiles
 
   const visibleDepartments = filterDepartmentsForUser(departments, {
     isAdmin,
@@ -267,6 +277,45 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
             labelIds,
           })
         }
+
+        const failedFiles: string[] = []
+        if (pendingFiles.length > 0) {
+          setIsUploadingFiles(true)
+          try {
+            for (const file of pendingFiles) {
+              try {
+                const { uploadUrl, storageKey } = await presignUpload(
+                  String(created.id),
+                  file.name,
+                  file.type,
+                  file.size
+                )
+                await uploadToR2(uploadUrl, file)
+                await confirmUpload({
+                  storageKey,
+                  fileName: file.name,
+                  fileSize: file.size,
+                  contentType: file.type,
+                  taskId: String(created.id),
+                })
+              } catch {
+                failedFiles.push(file.name)
+              }
+            }
+          } finally {
+            setIsUploadingFiles(false)
+          }
+        }
+
+        if (failedFiles.length > 0) {
+          const message =
+            failedFiles.length === 1
+              ? `1 dosya yüklenemedi: ${failedFiles[0]}`
+              : `${failedFiles.length} dosya yüklenemedi: ${failedFiles.join(', ')}`
+          alert(message)
+        }
+
+        setPendingFiles([])
       } else if (task) {
         const taskId = String(task.id)
         const departmentId = toId(values.departmentId ?? selectedDepartmentId) ?? null
@@ -327,6 +376,7 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
           <TabsList className="w-full">
             <TabsTrigger value="general">Genel</TabsTrigger>
             <TabsTrigger value="assignment">Atama</TabsTrigger>
+            <TabsTrigger value="attachments">Ekler</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" keepMounted className="grid gap-4 pt-2 sm:grid-cols-2">
@@ -485,6 +535,15 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="attachments" keepMounted className="pt-2">
+            {mode === 'edit' && task ? (
+              <AttachmentList taskId={String(task.id)} />
+            ) : (
+              <PendingFilesPicker files={pendingFiles} onChange={setPendingFiles} />
+            )}
+          </TabsContent>
+
         </Tabs>
 
         <DialogFooter>

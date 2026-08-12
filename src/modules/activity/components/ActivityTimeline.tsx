@@ -16,9 +16,12 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/AuthContext'
 import { getCurrentUserId } from '@/lib/currentUser'
+import { cn } from '@/lib/utils'
 import { useActivityQuery } from '@/modules/activity/api/useActivityQuery'
 import { getFieldLabel } from '@/modules/activity/utils/fieldLabels'
 import type { ActivityLogDto } from '@/modules/activity/utils/types'
+import { getAttachmentIcon } from '@/modules/attachments/utils/fileIcon'
+import type { AttachmentDto } from '@/modules/attachments/utils/types'
 import { useCommentsQuery } from '@/modules/comments/api/useCommentsQuery'
 import { useDeleteCommentMutation } from '@/modules/comments/api/useDeleteCommentMutation'
 import { useUpdateCommentMutation } from '@/modules/comments/api/useUpdateCommentMutation'
@@ -248,42 +251,15 @@ function CommentTimelineItem({ comment, taskId }: CommentTimelineItemProps) {
 
   return (
     <>
-      <li className="space-y-1 text-sm">
-        <div className="flex items-center gap-2">
-          <span className="font-medium">{comment.userFullName}</span>
-          <span className="text-xs text-muted-foreground">
-            {timelineDateFormatter.format(new Date(comment.createdAt))}
+      <li className={cn('flex flex-col gap-1', isOwn ? 'items-end' : 'items-start')}>
+        {!isOwn && (
+          <span className="px-1 text-xs font-medium text-muted-foreground">
+            {comment.userFullName}
           </span>
-          {comment.updatedAt && (
-            <span className="text-xs text-muted-foreground">(düzenlendi)</span>
-          )}
-
-          {(isOwn || isAdmin) && !isEditing && (
-            <div className="ml-auto flex items-center gap-1">
-              {isOwn && (
-                <Button type="button" variant="ghost" size="icon-xs" onClick={startEditing}>
-                  <Pencil />
-                  <span className="sr-only">Yorumu düzenle</span>
-                </Button>
-              )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => {
-                  setActionError(null)
-                  setPendingDeleteId(commentId)
-                }}
-              >
-                <Trash2 />
-                <span className="sr-only">Yorumu sil</span>
-              </Button>
-            </div>
-          )}
-        </div>
+        )}
 
         {isEditing ? (
-          <div className="space-y-2">
+          <div className="w-full max-w-[85%] space-y-2">
             <Textarea
               value={editContent}
               onChange={(event) => setEditContent(event.target.value)}
@@ -310,8 +286,60 @@ function CommentTimelineItem({ comment, taskId }: CommentTimelineItemProps) {
             </div>
           </div>
         ) : (
-          <p className="whitespace-pre-wrap">{comment.content}</p>
+          <div
+            className={cn(
+              'max-w-[85%] space-y-1.5 px-3 py-2 text-sm',
+              isOwn
+                ? 'rounded-2xl rounded-br-sm bg-primary/10 text-foreground'
+                : 'rounded-2xl rounded-bl-sm bg-muted text-foreground'
+            )}
+          >
+            <p className="whitespace-pre-wrap">{comment.content}</p>
+
+            {comment.attachments?.length > 0 && (
+              <ul className="space-y-1 border-t border-foreground/10 pt-1.5">
+                {comment.attachments.map((attachment) => (
+                  <li key={String(attachment.id)}>
+                    <CommentAttachmentLink attachment={attachment} isOwn={isOwn} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
+
+        <div
+          className={cn(
+            'flex items-center gap-2 px-1 text-xs text-muted-foreground',
+            isOwn && 'flex-row-reverse'
+          )}
+        >
+          <span>{timelineDateFormatter.format(new Date(comment.createdAt))}</span>
+          {comment.updatedAt && <span>(düzenlendi)</span>}
+
+          {(isOwn || isAdmin) && !isEditing && (
+            <div className="flex items-center gap-0.5">
+              {isOwn && (
+                <Button type="button" variant="ghost" size="icon-xs" onClick={startEditing}>
+                  <Pencil />
+                  <span className="sr-only">Yorumu düzenle</span>
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => {
+                  setActionError(null)
+                  setPendingDeleteId(commentId)
+                }}
+              >
+                <Trash2 />
+                <span className="sr-only">Yorumu sil</span>
+              </Button>
+            </div>
+          )}
+        </div>
 
         {actionError && <p className="text-sm text-destructive">{actionError}</p>}
       </li>
@@ -351,29 +379,52 @@ interface ActivityTimelineItemProps {
 }
 
 function ActivityTimelineItem({ entry }: ActivityTimelineItemProps) {
+  const currentUserId = getCurrentUserId()
+  const isOwn = currentUserId !== null && String(entry.userId) === currentUserId
   const fieldLabel = getFieldLabel(entry.fieldName)
   const isCreated = entry.fieldName === 'Created'
 
   return (
-    <li className="space-y-0.5 text-sm">
-      <p>
-        <span className="font-medium">{entry.userFullName}</span>{' '}
-        {isCreated ? (
-          <>görevi oluşturdu</>
-        ) : (
-          <>
-            {fieldLabel} alanını değiştirdi
-          </>
-        )}
-        <span className="ml-2 text-xs text-muted-foreground">
-          {timelineDateFormatter.format(new Date(entry.createdAt))}
-        </span>
-      </p>
-      {!isCreated && (entry.oldValue !== null || entry.newValue !== null) && (
-        <p className="text-xs text-muted-foreground">
-          {formatActivityValue(entry.oldValue)} → {formatActivityValue(entry.newValue)}
-        </p>
+    <li className={cn('flex flex-col gap-1', isOwn ? 'items-end' : 'items-start')}>
+      {!isOwn && (
+        <span className="px-1 text-xs font-medium text-muted-foreground">{entry.userFullName}</span>
       )}
+
+      <div
+        className={cn(
+          'max-w-[85%] space-y-0.5 px-3 py-2 text-sm',
+          isOwn
+            ? 'rounded-2xl rounded-br-sm bg-primary/10 text-foreground'
+            : 'rounded-2xl rounded-bl-sm bg-muted/80 text-muted-foreground'
+        )}
+      >
+        <p>
+          {isOwn ? (
+            isCreated ? (
+              <>Görevi oluşturdun</>
+            ) : (
+              <>
+                <span className="font-medium">{fieldLabel}</span> alanını değiştirdin
+              </>
+            )
+          ) : isCreated ? (
+            <>Görevi oluşturdu</>
+          ) : (
+            <>
+              <span className="font-medium">{fieldLabel}</span> alanını değiştirdi
+            </>
+          )}
+        </p>
+        {!isCreated && (entry.oldValue !== null || entry.newValue !== null) && (
+          <p className="text-xs opacity-80">
+            {formatActivityValue(entry.oldValue)} → {formatActivityValue(entry.newValue)}
+          </p>
+        )}
+      </div>
+
+      <span className="px-1 text-xs text-muted-foreground">
+        {timelineDateFormatter.format(new Date(entry.createdAt))}
+      </span>
     </li>
   )
 }
@@ -383,4 +434,28 @@ function formatActivityValue(value: string | null): string {
     return '—'
   }
   return value
+}
+
+function CommentAttachmentLink({
+  attachment,
+  isOwn,
+}: {
+  attachment: AttachmentDto
+  isOwn: boolean
+}) {
+  const Icon = getAttachmentIcon(attachment.contentType)
+
+  return (
+    <button
+      type="button"
+      className={cn(
+        'flex min-w-0 items-center gap-1.5 text-xs hover:underline',
+        isOwn ? 'text-foreground/80 hover:text-foreground' : 'text-muted-foreground hover:text-foreground'
+      )}
+      onClick={() => window.open(attachment.downloadUrl, '_blank')}
+    >
+      <Icon className="size-3.5 shrink-0" />
+      <span className="truncate">{attachment.fileName}</span>
+    </button>
+  )
 }

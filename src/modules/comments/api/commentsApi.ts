@@ -5,10 +5,14 @@ export function getComments(taskId: string): Promise<CommentDto[]> {
   return apiFetch<CommentDto[]>(`/api/tasks/${taskId}/comments`)
 }
 
-export function createComment(taskId: string, content: string): Promise<CommentDto> {
+export function createComment(
+  taskId: string,
+  content: string,
+  attachmentIds?: string[]
+): Promise<CommentDto> {
   return apiFetch<CommentDto>(`/api/tasks/${taskId}/comments`, {
     method: 'POST',
-    body: { content },
+    body: { content, attachmentIds },
   })
 }
 

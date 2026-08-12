@@ -1,3 +1,5 @@
+import type { AttachmentDto } from '@/modules/attachments/utils/types'
+
 export interface CommentDto {
   id: string
   taskId: string
@@ -6,4 +8,5 @@ export interface CommentDto {
   content: string
   createdAt: string
   updatedAt: string | null
+  attachments: AttachmentDto[]
 }

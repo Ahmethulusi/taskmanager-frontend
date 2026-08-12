@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { UserAvatar } from '@/components/UserAvatar'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Sheet,
   SheetContent,
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { getLabelColor } from '@/lib/labelColors'
 import { getStatusColor } from '@/lib/statusColors'
 import { ActivityTimeline } from '@/modules/activity/components/ActivityTimeline'
+import { AttachmentList } from '@/modules/attachments/components/AttachmentList'
 import { getPriorityDisplay } from '@/modules/tasks/utils/taskDisplay'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 
@@ -38,6 +39,7 @@ interface TaskDetailsDialogProps {
 }
 
 export function TaskDetailsDialog({ task, open, onOpenChange }: TaskDetailsDialogProps) {
+  const [activeTab, setActiveTab] = useState('details')
   const priority = getPriorityDisplay(task.priority)
   const statusColor = getStatusColor(task.statusColorKey)
 
@@ -67,65 +69,106 @@ export function TaskDetailsDialog({ task, open, onOpenChange }: TaskDetailsDialo
           ) : null}
         </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <dl className="grid shrink-0 grid-cols-4 gap-x-2 gap-y-1.5 px-4 py-2.5">
-            <DetailField label="Bitiş">
-              {task.dueDate ? dueDateFormatter.format(new Date(task.dueDate)) : '—'}
-            </DetailField>
-            <DetailField label="Departman">{task.departmentName ?? '—'}</DetailField>
-            <DetailField label="Proje">{task.projectName ?? '—'}</DetailField>
-            <DetailField label="Atananlar">
-              {task.assignedUsers?.length ? (
-                <ul className="space-y-0.5">
-                  {task.assignedUsers.map((user) => (
-                    <li key={String(user.id)} className="flex min-w-0 items-center gap-1">
-                      <UserAvatar name={user.fullName} size="sm" />
-                      <span className="truncate">{user.fullName}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <span className="text-muted-foreground">—</span>
-              )}
-            </DetailField>
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex min-h-0 flex-1 flex-col gap-0"
+        >
+          <TabsList className="mx-4 mt-3 shrink-0 gap-1 bg-muted p-1">
+            <TabsTrigger
+              value="details"
+              className="flex-1 data-active:bg-background data-active:text-foreground data-active:shadow-sm"
+            >
+              Detay
+            </TabsTrigger>
+            <TabsTrigger
+              value="attachments"
+              className="flex-1 data-active:bg-background data-active:text-foreground data-active:shadow-sm"
+            >
+              Ekler
+            </TabsTrigger>
+            <TabsTrigger
+              value="activity"
+              className="flex-1 data-active:bg-background data-active:text-foreground data-active:shadow-sm"
+            >
+              Aktivite
+            </TabsTrigger>
+          </TabsList>
 
-            <DetailField label="Oluşturan">{task.createdByUserName}</DetailField>
-            <DetailField label="Oluşturulma">
-              {dateFormatter.format(new Date(task.createdAt))}
-            </DetailField>
-            <DetailField label="Güncellenme">
-              {task.updatedAt ? dateFormatter.format(new Date(task.updatedAt)) : '—'}
-            </DetailField>
-            <DetailField label="Etiketler">
-              {task.labels?.length ? (
-                <div className="flex flex-wrap gap-0.5">
-                  {task.labels.map((label) => {
-                    const color = getLabelColor(String(label.id))
-                    return (
-                      <Badge
-                        key={String(label.id)}
-                        variant="secondary"
-                        className="h-5 max-w-full truncate border-transparent px-1.5 text-xs"
-                        style={{ backgroundColor: color.bg, color: color.text }}
-                        title={label.name}
-                      >
-                        {label.name}
-                      </Badge>
-                    )
-                  })}
-                </div>
-              ) : (
-                <span className="text-muted-foreground">—</span>
-              )}
-            </DetailField>
-          </dl>
+          <TabsContent
+            value="details"
+            keepMounted
+            className="no-scrollbar flex-1 overflow-y-auto px-4 py-3"
+          >
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+              <DetailField label="Bitiş">
+                {task.dueDate ? dueDateFormatter.format(new Date(task.dueDate)) : '—'}
+              </DetailField>
+              <DetailField label="Departman">{task.departmentName ?? '—'}</DetailField>
+              <DetailField label="Proje">{task.projectName ?? '—'}</DetailField>
+              <DetailField label="Atananlar">
+                {task.assignedUsers?.length ? (
+                  <ul className="space-y-0.5">
+                    {task.assignedUsers.map((user) => (
+                      <li key={String(user.id)} className="flex min-w-0 items-center gap-1">
+                        <UserAvatar name={user.fullName} size="sm" />
+                        <span className="truncate">{user.fullName}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </DetailField>
 
-          <Separator className="shrink-0" />
+              <DetailField label="Oluşturan">{task.createdByUserName}</DetailField>
+              <DetailField label="Oluşturulma">
+                {dateFormatter.format(new Date(task.createdAt))}
+              </DetailField>
+              <DetailField label="Güncellenme">
+                {task.updatedAt ? dateFormatter.format(new Date(task.updatedAt)) : '—'}
+              </DetailField>
+              <DetailField label="Etiketler" className="sm:col-span-2">
+                {task.labels?.length ? (
+                  <div className="flex flex-wrap gap-0.5">
+                    {task.labels.map((label) => {
+                      const color = getLabelColor(String(label.id))
+                      return (
+                        <Badge
+                          key={String(label.id)}
+                          variant="secondary"
+                          className="h-5 max-w-full truncate border-transparent px-1.5 text-xs"
+                          style={{ backgroundColor: color.bg, color: color.text }}
+                          title={label.name}
+                        >
+                          {label.name}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </DetailField>
+            </dl>
+          </TabsContent>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-3 pb-4">
+          <TabsContent
+            value="attachments"
+            keepMounted
+            className="no-scrollbar flex-1 overflow-y-auto px-4 py-3"
+          >
+            <AttachmentList taskId={task.id} />
+          </TabsContent>
+
+          <TabsContent
+            value="activity"
+            keepMounted
+            className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-3 pb-4"
+          >
             <ActivityTimeline taskId={task.id} />
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </SheetContent>
     </Sheet>
   )
