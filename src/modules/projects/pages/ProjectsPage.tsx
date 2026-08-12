@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/lib/AuthContext'
 import { useProjectsQuery } from '@/modules/projects/api/useProjectsQuery'
 import { DeleteProjectDialog } from '@/modules/projects/components/DeleteProjectDialog'
 import { ProjectCard } from '@/modules/projects/components/ProjectCard'
@@ -13,6 +14,8 @@ import { useTasksQuery } from '@/modules/tasks/api/useTasksQuery'
 type OpenDialog = 'create' | 'edit' | 'delete' | null
 
 export function ProjectsPage() {
+  const { hasPermission } = useAuth()
+  const canManage = hasPermission('projects.manage')
   const { data, isLoading, isError, error } = useProjectsQuery()
   const { data: tasks } = useTasksQuery()
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null)
@@ -53,7 +56,7 @@ export function ProjectsPage() {
     const projects = data ?? []
 
     if (projects.length === 0) {
-      return <p className="p-4 text-base text-muted-foreground">Henüz proje yok</p>
+      return <p className="p-4 text-base text-muted-foreground">Henüz projeniz yok</p>
     }
 
     return (
@@ -76,10 +79,12 @@ export function ProjectsPage() {
       <PageHeader
         title="Projeler"
         actions={
-          <Button type="button" size="lg" onClick={openCreate}>
-            <Plus />
-            Yeni Proje
-          </Button>
+          canManage && (
+            <Button type="button" size="lg" onClick={openCreate}>
+              <Plus />
+              Yeni Proje
+            </Button>
+          )
         }
       />
 

@@ -26,3 +26,14 @@ export function deleteUser(id: string): Promise<void> {
     method: 'DELETE',
   })
 }
+
+export function getOwnProfile(): Promise<UserDto> {
+  return apiFetch<UserDto>('/api/users/me')
+}
+
+export function updateOwnProfile(fullName: string, email: string): Promise<UserDto> {
+  return apiFetch<UserDto>('/api/users/me', {
+    method: 'PUT',
+    body: { fullName, email },
+  })
+}

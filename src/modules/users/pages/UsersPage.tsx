@@ -15,6 +15,7 @@ import {
 import { useAuth } from '@/lib/AuthContext'
 import { useUsersQuery } from '@/modules/users/api/useUsersQuery'
 import { DeleteUserDialog } from '@/modules/users/components/DeleteUserDialog'
+import { OwnProfileCard } from '@/modules/users/components/OwnProfileCard'
 import { UserEditDialog } from '@/modules/users/components/UserEditDialog'
 import type { UserDto } from '@/modules/users/utils/types'
 
@@ -27,10 +28,14 @@ const dateFormatter = new Intl.DateTimeFormat('tr-TR', {
 type OpenDialog = 'create' | 'edit' | 'delete' | null
 
 export function UsersPage() {
-  const { user: authUser } = useAuth()
+  const { user: authUser, hasPermission } = useAuth()
   const { data, isLoading, isError, error } = useUsersQuery()
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null)
   const [selected, setSelected] = useState<UserDto | null>(null)
+
+  if (!hasPermission('users.manage')) {
+    return <OwnProfileCard />
+  }
 
   function openCreate() {
     setSelected(null)
@@ -95,7 +100,17 @@ export function UsersPage() {
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{user.role}</Badge>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {user.roles?.length ? (
+                        user.roles.map((role) => (
+                          <Badge key={role} variant="secondary">
+                            {role}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>{departmentNames}</TableCell>
                   <TableCell>{dateFormatter.format(new Date(user.createdAt))}</TableCell>

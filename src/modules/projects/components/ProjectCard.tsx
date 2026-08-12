@@ -10,6 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useAuth } from '@/lib/AuthContext'
+import { getCurrentUserId } from '@/lib/currentUser'
 import { getProjectColor } from '@/lib/projectColors'
 import { getProjectIcon } from '@/lib/projectIcons'
 import type { ProjectDto } from '@/modules/projects/utils/types'
@@ -23,7 +25,12 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project, taskCount, onEdit, onDelete }: ProjectCardProps) {
   const navigate = useNavigate()
+  const { hasPermission } = useAuth()
   const color = getProjectColor(project.id)
+
+  const currentUserId = getCurrentUserId()
+  const myMembership = project.members?.find((member) => member.userId === currentUserId)
+  const canManage = hasPermission('projects.manage') || myMembership?.role === 'Owner'
 
   return (
     <Card className="group flex h-56 flex-col justify-between p-4 transition-colors duration-200 hover:bg-muted">
@@ -50,31 +57,33 @@ export function ProjectCard({ project, taskCount, onEdit, onDelete }: ProjectCar
             <span className="sr-only">Görevleri görüntüle</span>
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="cursor-pointer hover:bg-background dark:hover:bg-card"
-                />
-              }
-            >
-              <MoreVertical />
-              <span className="sr-only">İşlemler</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={onEdit}>
-                <Pencil />
-                Düzenle
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                <Trash2 />
-                Sil
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {canManage && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="cursor-pointer hover:bg-background dark:hover:bg-card"
+                  />
+                }
+              >
+                <MoreVertical />
+                <span className="sr-only">İşlemler</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={onEdit}>
+                  <Pencil />
+                  Düzenle
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                  <Trash2 />
+                  Sil
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 

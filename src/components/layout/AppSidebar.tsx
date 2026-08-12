@@ -4,6 +4,7 @@ import {
   FolderKanban,
   ListChecks,
   LogOut,
+  ShieldCheck,
   SquareKanban,
   Tags,
   Users,
@@ -33,10 +34,11 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/tasks', label: 'Görevler', icon: ListChecks },
-  { to: '/users', label: 'Kullanıcılar', icon: Users, permission: 'users.manage' },
+  { to: '/users', label: 'Kullanıcılar', icon: Users },
   { to: '/departments', label: 'Departmanlar', icon: Building2, permission: 'departments.manage' },
-  { to: '/projects', label: 'Projeler', icon: FolderKanban, permission: 'projects.manage' },
+  { to: '/projects', label: 'Projeler', icon: FolderKanban },
   { to: '/statuses', label: 'Durumlar', icon: Tags, permission: 'statuses.manage' },
+  { to: '/roles', label: 'Roller', icon: ShieldCheck, permission: 'roles.manage' },
 ]
 
 export function AppSidebar() {

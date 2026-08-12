@@ -8,6 +8,7 @@ export interface UserDto {
   fullName: string
   email: string
   role: 'Admin' | 'User' | string
+  roles: string[]
   createdAt: string
   departments: UserDepartmentSummary[]
 }
@@ -15,7 +16,7 @@ export interface UserDto {
 export interface UpdateUserDto {
   fullName: string
   email: string
-  role: string
+  roleIds: string[]
   departmentIds: string[]
 }
 
@@ -23,6 +24,6 @@ export interface CreateUserDto {
   fullName: string
   email: string
   password: string
-  role: string
+  roleIds: string[]
   departmentIds: string[]
 }

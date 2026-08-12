@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 
@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useDepartmentsQuery } from '@/modules/departments/api/useDepartmentsQuery'
+import { useRolesQuery } from '@/modules/roles/api/useRolesQuery'
 import { useCreateUserMutation } from '@/modules/users/api/useCreateUserMutation'
 import { useUpdateUserMutation } from '@/modules/users/api/useUpdateUserMutation'
 import {
@@ -18,11 +17,6 @@ import {
   type UserEditFormValues,
 } from '@/modules/users/utils/schemas'
 import type { UserDto } from '@/modules/users/utils/types'
-
-const ROLE_OPTIONS: { value: UserEditFormValues['role']; label: string }[] = [
-  { value: 'Admin', label: 'Admin' },
-  { value: 'User', label: 'User' },
-]
 
 function toId(value: string | number): string {
   return String(value)
@@ -55,9 +49,8 @@ interface UserCreateDialogFieldsProps {
 }
 
 function UserCreateDialogFields({ onOpenChange }: UserCreateDialogFieldsProps) {
-  const { data: departments } = useDepartmentsQuery()
+  const { data: roles } = useRolesQuery()
   const { mutateAsync, isPending } = useCreateUserMutation()
-  const [departmentIds, setDepartmentIds] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const {
@@ -67,7 +60,7 @@ function UserCreateDialogFields({ onOpenChange }: UserCreateDialogFieldsProps) {
     formState: { errors },
   } = useForm<UserCreateFormValues>({
     resolver: zodResolver(userCreateSchema),
-    defaultValues: { fullName: '', email: '', password: '', role: 'User', departmentIds: [] },
+    defaultValues: { fullName: '', email: '', password: '', roleIds: [] },
   })
 
   async function onSubmit(values: UserCreateFormValues) {
@@ -77,8 +70,10 @@ function UserCreateDialogFields({ onOpenChange }: UserCreateDialogFieldsProps) {
         fullName: values.fullName,
         email: values.email,
         password: values.password,
-        role: values.role,
-        departmentIds,
+        roleIds: values.roleIds,
+        // Departman ataması bu formdan kaldırıldı; yeni kullanıcılar
+        // departmansız oluşturulur.
+        departmentIds: [],
       })
       onOpenChange(false)
     } catch (err) {
@@ -117,40 +112,22 @@ function UserCreateDialogFields({ onOpenChange }: UserCreateDialogFieldsProps) {
           )}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label>Rol</Label>
+        <div className="flex flex-col gap-2 sm:col-span-2">
+          <Label>Roller</Label>
           <Controller
             control={control}
-            name="role"
+            name="roleIds"
             render={({ field }) => (
-              <Select
-                items={ROLE_OPTIONS}
-                value={field.value}
-                onValueChange={field.onChange}
+              <MultiSelectCheckList
+                items={roles?.map((role) => ({ id: toId(role.id), label: role.name })) ?? []}
+                selectedIds={field.value ?? []}
+                onChange={field.onChange}
                 disabled={isPending}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Rol seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             )}
           />
-          {errors.role && <p className="text-xs text-destructive">{errors.role.message}</p>}
+          {errors.roleIds && <p className="text-xs text-destructive">{errors.roleIds.message}</p>}
         </div>
-
-        <UserDepartmentsField
-          departments={departments}
-          departmentIds={departmentIds}
-          onChange={setDepartmentIds}
-          disabled={isPending}
-        />
 
         <DialogFooter className="sm:col-span-2">
           <Button type="submit" disabled={isPending}>
@@ -168,27 +145,37 @@ interface UserEditDialogFieldsProps {
 }
 
 function UserEditDialogFields({ user, onOpenChange }: UserEditDialogFieldsProps) {
-  const { data: departments } = useDepartmentsQuery()
+  const { data: roles } = useRolesQuery()
   const { mutateAsync, isPending } = useUpdateUserMutation()
-  const [departmentIds, setDepartmentIds] = useState<string[]>(
-    user.departments?.map((department) => toId(department.id)) ?? []
-  )
   const [error, setError] = useState<string | null>(null)
 
   const {
     control,
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<UserEditFormValues>({
     resolver: zodResolver(userEditSchema),
     defaultValues: {
       fullName: user.fullName,
       email: user.email,
-      role: user.role === 'Admin' || user.role === 'User' ? user.role : 'User',
-      departmentIds: user.departments?.map((department) => toId(department.id)) ?? [],
+      roleIds: [],
     },
   })
+
+  // UserDto.roles yalnızca rol isimlerini döndürüyor, Id değil — form için
+  // gereken roleIds'i, roller yüklendiğinde isimleri eşleştirerek bir kez hesaplıyoruz.
+  const didInitRoleIds = useRef(false)
+  useEffect(() => {
+    if (!didInitRoleIds.current && roles) {
+      const matchedIds = roles
+        .filter((role) => user.roles?.includes(role.name))
+        .map((role) => toId(role.id))
+      setValue('roleIds', matchedIds)
+      didInitRoleIds.current = true
+    }
+  }, [roles, user.roles, setValue])
 
   async function onSubmit(values: UserEditFormValues) {
     setError(null)
@@ -198,8 +185,11 @@ function UserEditDialogFields({ user, onOpenChange }: UserEditDialogFieldsProps)
         dto: {
           fullName: values.fullName,
           email: values.email,
-          role: values.role,
-          departmentIds,
+          roleIds: values.roleIds,
+          // Departman ataması bu formdan kaldırıldı; endpoint tam-değiştirme
+          // semantiğiyle çalıştığı için mevcut atamaları korumak amacıyla
+          // kullanıcının GÜNCEL departman id'lerini olduğu gibi geri gönderiyoruz.
+          departmentIds: user.departments?.map((department) => toId(department.id)) ?? [],
         },
       })
       onOpenChange(false)
@@ -231,40 +221,22 @@ function UserEditDialogFields({ user, onOpenChange }: UserEditDialogFieldsProps)
           {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label>Rol</Label>
+        <div className="flex flex-col gap-2 sm:col-span-2">
+          <Label>Roller</Label>
           <Controller
             control={control}
-            name="role"
+            name="roleIds"
             render={({ field }) => (
-              <Select
-                items={ROLE_OPTIONS}
-                value={field.value}
-                onValueChange={field.onChange}
+              <MultiSelectCheckList
+                items={roles?.map((role) => ({ id: toId(role.id), label: role.name })) ?? []}
+                selectedIds={field.value ?? []}
+                onChange={field.onChange}
                 disabled={isPending}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Rol seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             )}
           />
-          {errors.role && <p className="text-xs text-destructive">{errors.role.message}</p>}
+          {errors.roleIds && <p className="text-xs text-destructive">{errors.roleIds.message}</p>}
         </div>
-
-        <UserDepartmentsField
-          departments={departments}
-          departmentIds={departmentIds}
-          onChange={setDepartmentIds}
-          disabled={isPending}
-        />
 
         <DialogFooter className="sm:col-span-2">
           <Button type="submit" disabled={isPending}>
@@ -273,36 +245,5 @@ function UserEditDialogFields({ user, onOpenChange }: UserEditDialogFieldsProps)
         </DialogFooter>
       </form>
     </>
-  )
-}
-
-interface UserDepartmentsFieldProps {
-  departments: { id: string | number; name: string }[] | undefined
-  departmentIds: string[]
-  onChange: (ids: string[]) => void
-  disabled: boolean
-}
-
-function UserDepartmentsField({
-  departments,
-  departmentIds,
-  onChange,
-  disabled,
-}: UserDepartmentsFieldProps) {
-  return (
-    <div className="flex flex-col gap-2 sm:col-span-2">
-      <Label>Departmanlar</Label>
-      <MultiSelectCheckList
-        items={
-          departments?.map((department) => ({
-            id: toId(department.id),
-            label: department.name,
-          })) ?? []
-        }
-        selectedIds={departmentIds}
-        onChange={onChange}
-        disabled={disabled}
-      />
-    </div>
   )
 }
