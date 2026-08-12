@@ -1,4 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 import { getStatusColor } from '@/lib/statusColors'
 import { cn } from '@/lib/utils'
@@ -9,10 +10,11 @@ interface TaskColumnProps {
   statusId: string
   label: string
   colorKey: string
+  taskIds: string[]
   tasks: TaskDto[]
 }
 
-export function TaskColumn({ statusId, label, colorKey, tasks }: TaskColumnProps) {
+export function TaskColumn({ statusId, label, colorKey, taskIds, tasks }: TaskColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: statusId })
   const color = getStatusColor(colorKey)
 
@@ -39,12 +41,18 @@ export function TaskColumn({ statusId, label, colorKey, tasks }: TaskColumnProps
         overflow-y-auto clips children; keep padding >= card border width so
         top/side borders stay visible (especially during dnd compositing).
       */}
-      <div className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden p-1">
-        {tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Bu durumda görev yok</p>
-        ) : (
-          tasks.map((task) => <TaskCard key={task.id} task={task} />)
-        )}
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-1">
+        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+          {tasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Bu durumda görev yok</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {tasks.map((task) => (
+                <TaskCard key={String(task.id)} task={task} />
+              ))}
+            </div>
+          )}
+        </SortableContext>
       </div>
     </div>
   )

@@ -3,11 +3,11 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/lib/AuthContext'
 
 interface ProtectedRouteProps {
-  requiredRole?: 'Admin'
+  requiredPermission?: string
 }
 
-export function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth()
+export function ProtectedRoute({ requiredPermission }: ProtectedRouteProps) {
+  const { user, isLoading, hasPermission } = useAuth()
   const location = useLocation()
 
   if (isLoading) {
@@ -22,7 +22,7 @@ export function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {
     return <Navigate to="/change-password" replace />
   }
 
-  if (requiredRole && user.role !== requiredRole) {
+  if (requiredPermission && !hasPermission(requiredPermission)) {
     return <Navigate to="/tasks" replace />
   }
 

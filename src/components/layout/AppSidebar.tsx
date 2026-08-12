@@ -28,23 +28,23 @@ interface NavItem {
   to: string
   label: string
   icon: LucideIcon
+  permission?: string
 }
 
-const NAV_ITEMS: NavItem[] = [{ to: '/tasks', label: 'Görevler', icon: ListChecks }]
-
-const ADMIN_NAV_ITEMS: NavItem[] = [
-  { to: '/users', label: 'Kullanıcılar', icon: Users },
-  { to: '/departments', label: 'Departmanlar', icon: Building2 },
-  { to: '/projects', label: 'Projeler', icon: FolderKanban },
-  { to: '/statuses', label: 'Durumlar', icon: Tags },
+const NAV_ITEMS: NavItem[] = [
+  { to: '/tasks', label: 'Görevler', icon: ListChecks },
+  { to: '/users', label: 'Kullanıcılar', icon: Users, permission: 'users.manage' },
+  { to: '/departments', label: 'Departmanlar', icon: Building2, permission: 'departments.manage' },
+  { to: '/projects', label: 'Projeler', icon: FolderKanban, permission: 'projects.manage' },
+  { to: '/statuses', label: 'Durumlar', icon: Tags, permission: 'statuses.manage' },
 ]
 
 export function AppSidebar() {
-  const { user, logout } = useAuth()
+  const { user, logout, hasPermission } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  const items = user?.role === 'Admin' ? [...NAV_ITEMS, ...ADMIN_NAV_ITEMS] : NAV_ITEMS
+  const items = NAV_ITEMS.filter((item) => !item.permission || hasPermission(item.permission))
 
   function handleLogout() {
     logout()

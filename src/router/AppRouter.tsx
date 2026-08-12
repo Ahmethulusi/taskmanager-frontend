@@ -32,13 +32,20 @@ export const router = createBrowserRouter([
         children: [{ path: '/tasks', element: <TasksPage /> }],
       },
       {
-        element: <ProtectedRoute requiredRole="Admin" />,
-        children: [
-          { path: '/users', element: <UsersPage /> },
-          { path: '/departments', element: <DepartmentsPage /> },
-          { path: '/projects', element: <ProjectsPage /> },
-          { path: '/statuses', element: <StatusesPage /> },
-        ],
+        element: <ProtectedRoute requiredPermission="users.manage" />,
+        children: [{ path: '/users', element: <UsersPage /> }],
+      },
+      {
+        element: <ProtectedRoute requiredPermission="departments.manage" />,
+        children: [{ path: '/departments', element: <DepartmentsPage /> }],
+      },
+      {
+        element: <ProtectedRoute requiredPermission="projects.manage" />,
+        children: [{ path: '/projects', element: <ProjectsPage /> }],
+      },
+      {
+        element: <ProtectedRoute requiredPermission="statuses.manage" />,
+        children: [{ path: '/statuses', element: <StatusesPage /> }],
       },
     ],
   },

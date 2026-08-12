@@ -6,6 +6,7 @@ export interface AuthResponse {
   email: string
   role: 'Admin' | 'User'
   mustChangePassword: boolean
+  permissions: string[]
 }
 
 export function login(email: string, password: string): Promise<AuthResponse> {

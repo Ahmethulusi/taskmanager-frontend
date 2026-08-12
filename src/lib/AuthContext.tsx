@@ -10,6 +10,7 @@ interface AuthContextValue {
   register: (fullName: string, email: string, password: string) => Promise<void>
   logout: () => void
   updateMustChangePassword: (value: boolean) => void
+  hasPermission: (key: string) => boolean
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -42,6 +43,7 @@ function readPersistedUser(): AuthResponse | null {
       email: parsed.email,
       role: parsed.role,
       mustChangePassword: parsed.mustChangePassword ?? false,
+      permissions: parsed.permissions ?? [],
     }
   } catch {
     clearPersistedAuth()
@@ -81,9 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  function hasPermission(key: string): boolean {
+    return user?.permissions?.includes(key) ?? false
+  }
+
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, login, register, logout, updateMustChangePassword }}
+      value={{ user, isLoading, login, register, logout, updateMustChangePassword, hasPermission }}
     >
       {children}
     </AuthContext.Provider>

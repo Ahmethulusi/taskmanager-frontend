@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react'
-import { useDraggable } from '@dnd-kit/core'
-import { GripVertical, MoreVertical, Calendar, FolderKanban, MessageCircle } from 'lucide-react'
+import { useState, type ReactNode, type CSSProperties } from 'react'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { MoreVertical, Calendar, FolderKanban, MessageCircle } from 'lucide-react'
 
 import { UserAvatar } from '@/components/UserAvatar'
 import { Badge } from '@/components/ui/badge'
@@ -63,34 +64,37 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task }: TaskCardProps) {
-  const { user } = useAuth()
+  const { hasPermission } = useAuth()
   const { data: statuses } = useStatusesQuery()
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: task.id,
-    data: { statusId: task.statusId },
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: String(task.id),
+    data: { statusId: String(task.statusId) },
   })
   const { mutate, isPending, error } = useUpdateTaskStatusMutation()
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null)
 
   const otherStatuses =
     statuses?.filter((status) => String(status.id) !== String(task.statusId)) ?? []
-  const isAdmin = user?.role === 'Admin'
+  const canAssign = hasPermission('tasks.assign')
   const borderColor = getStatusColor(task.statusColorKey).dot
+
+  const style: CSSProperties = {
+    touchAction: 'none',
+    borderColor: `${borderColor}73`,
+    transform: CSS.Transform.toString(transform),
+    transition: transition ?? 'transform 220ms cubic-bezier(0.25, 1, 0.5, 1)',
+    opacity: isDragging ? 0.35 : undefined,
+    zIndex: isDragging ? 1 : undefined,
+  }
 
   return (
     <>
       <div
         ref={setNodeRef}
-        style={{
-          touchAction: 'none',
-          borderColor: `${borderColor}73`,
-          // DragOverlay kullanıldığı için kaynak kartta transform uygulanmaz;
-          // overflow parent'larda kenar kırpmasını önler.
-          transform: 'none',
-        }}
+        style={style}
         {...listeners}
         {...attributes}
-        className={getTaskCardClassName(isDragging && 'opacity-40')}
+        className={getTaskCardClassName(isDragging && 'shadow-sm')}
       >
         <TaskCardBody
           task={task}
@@ -131,7 +135,7 @@ export function TaskCard({ task }: TaskCardProps) {
                     ))}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
-                {isAdmin && (
+                {canAssign && (
                   <DropdownMenuItem onClick={() => setOpenDialog('assign')}>Ata</DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -166,7 +170,7 @@ export function TaskCard({ task }: TaskCardProps) {
         open={openDialog === 'delete'}
         onOpenChange={(open) => setOpenDialog(open ? 'delete' : null)}
       />
-      {isAdmin && (
+      {canAssign && (
         <AssignTaskDialog
           task={task}
           open={openDialog === 'assign'}
@@ -184,7 +188,7 @@ export function TaskCardDragOverlay({ task }: TaskCardProps) {
       className={getTaskCardClassName('cursor-grabbing shadow-lg')}
       style={{ borderColor: `${borderColor}73` }}
     >
-      <TaskCardBody task={task} showDragHandle />
+      <TaskCardBody task={task} />
     </div>
   )
 }
@@ -192,24 +196,14 @@ export function TaskCardDragOverlay({ task }: TaskCardProps) {
 interface TaskCardBodyProps {
   task: TaskDto
   action?: ReactNode
-  showDragHandle?: boolean
 }
 
-function TaskCardBody({ task, action, showDragHandle = false }: TaskCardBodyProps) {
+function TaskCardBody({ task, action }: TaskCardBodyProps) {
   const priority = getPriorityDisplay(task.priority)
 
   return (
     <>
       <div className="flex items-start gap-1">
-        <GripVertical
-          aria-hidden
-          className={cn(
-            'mt-0.5 size-5 shrink-0 text-muted-foreground transition-opacity',
-            showDragHandle
-              ? 'opacity-100'
-              : 'opacity-0 group-hover:opacity-100 group-active:opacity-100'
-          )}
-        />
         <p className="min-w-0 flex-1 font-heading text-base font-medium">{task.title}</p>
         {action}
       </div>

@@ -11,9 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/AuthContext'
+import { getCurrentUserId } from '@/lib/currentUser'
 import { useDepartmentsQuery } from '@/modules/departments/api/useDepartmentsQuery'
+import type { DepartmentDto } from '@/modules/departments/utils/types'
 import type { LabelDto } from '@/modules/labels/utils/types'
 import { useProjectsQuery } from '@/modules/projects/api/useProjectsQuery'
+import type { ProjectDto } from '@/modules/projects/utils/types'
 import { useAssignTaskMutation } from '@/modules/tasks/api/useAssignTaskMutation'
 import { useCreateTaskMutation } from '@/modules/tasks/api/useCreateTaskMutation'
 import { useUpdateTaskLabelsMutation } from '@/modules/tasks/api/useUpdateTaskLabelsMutation'
@@ -33,6 +36,45 @@ function toId(value: string | number | null | undefined): string | undefined {
     return undefined
   }
   return String(value)
+}
+
+function filterDepartmentsForUser(
+  departments: DepartmentDto[] | undefined,
+  options: { isAdmin: boolean; userId: string | null; selectedDepartmentId?: string }
+): DepartmentDto[] {
+  if (!departments) {
+    return []
+  }
+  if (options.isAdmin || !options.userId) {
+    return departments
+  }
+  return departments.filter((department) => {
+    if (options.selectedDepartmentId && String(department.id) === options.selectedDepartmentId) {
+      return true
+    }
+    if (department.managerId != null && String(department.managerId) === options.userId) {
+      return true
+    }
+    return department.users?.some((member) => String(member.id) === options.userId) ?? false
+  })
+}
+
+function filterProjectsForUser(
+  projects: ProjectDto[] | undefined,
+  options: { isAdmin: boolean; userId: string | null; selectedProjectId?: string }
+): ProjectDto[] {
+  if (!projects) {
+    return []
+  }
+  if (options.isAdmin || !options.userId) {
+    return projects
+  }
+  return projects.filter((project) => {
+    if (options.selectedProjectId && String(project.id) === options.selectedProjectId) {
+      return true
+    }
+    return project.members?.some((member) => String(member.userId) === options.userId) ?? false
+  })
 }
 
 const PRIORITY_OPTIONS: { value: CreateTaskFormValues['priority']; label: string }[] = [
@@ -82,11 +124,13 @@ interface TaskFormFieldsProps {
 }
 
 function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskFormFieldsProps) {
-  const { user } = useAuth()
+  const { user, hasPermission } = useAuth()
   const { data: departments } = useDepartmentsQuery()
   const { data: projects } = useProjectsQuery()
   const { data: users } = useUsersQuery()
-  const showAssignField = user?.role === 'Admin'
+  const showAssignField = hasPermission('tasks.assign')
+  const isAdmin = user?.role === 'Admin'
+  const currentUserId = getCurrentUserId()
 
   const [assignedUserIds, setAssignedUserIds] = useState<string[]>(() => {
     if (mode === 'edit' && task) {
@@ -119,6 +163,17 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
     updateMutation.isPending ||
     updateLabelsMutation.isPending ||
     assignMutation.isPending
+
+  const visibleDepartments = filterDepartmentsForUser(departments, {
+    isAdmin,
+    userId: currentUserId,
+    selectedDepartmentId,
+  })
+  const visibleProjects = filterProjectsForUser(projects, {
+    isAdmin,
+    userId: currentUserId,
+    selectedProjectId,
+  })
 
   const {
     control,
@@ -353,10 +408,10 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
                   <Select
                     items={[
                       { value: NO_DEPARTMENT, label: 'Departman Yok' },
-                      ...(departments?.map((department) => ({
+                      ...visibleDepartments.map((department) => ({
                         value: toId(department.id)!,
                         label: department.name,
-                      })) ?? []),
+                      })),
                     ]}
                     value={field.value ?? NO_DEPARTMENT}
                     onValueChange={(value) => {
@@ -370,7 +425,7 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NO_DEPARTMENT}>Departman Yok</SelectItem>
-                      {departments?.map((department) => (
+                      {visibleDepartments.map((department) => (
                         <SelectItem key={toId(department.id)} value={toId(department.id)!}>
                           {department.name}
                         </SelectItem>
@@ -390,10 +445,10 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
                   <Select
                     items={[
                       { value: NO_PROJECT, label: 'Proje Yok' },
-                      ...(projects?.map((project) => ({
+                      ...visibleProjects.map((project) => ({
                         value: toId(project.id)!,
                         label: project.name,
-                      })) ?? []),
+                      })),
                     ]}
                     value={field.value ?? NO_PROJECT}
                     onValueChange={(value) => {
@@ -407,7 +462,7 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NO_PROJECT}>Proje Yok</SelectItem>
-                      {projects?.map((project) => (
+                      {visibleProjects.map((project) => (
                         <SelectItem key={toId(project.id)} value={toId(project.id)!}>
                           {project.name}
                         </SelectItem>
