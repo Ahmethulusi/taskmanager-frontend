@@ -96,6 +96,9 @@ interface TaskFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   defaultProjectId?: string
+  defaultDepartmentId?: string
+  defaultParentTaskId?: number
+  defaultAssignedUserIds?: string[]
 }
 
 export function TaskFormDialog({
@@ -104,6 +107,9 @@ export function TaskFormDialog({
   open,
   onOpenChange,
   defaultProjectId,
+  defaultDepartmentId,
+  defaultParentTaskId,
+  defaultAssignedUserIds,
 }: TaskFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,6 +122,9 @@ export function TaskFormDialog({
             task={task}
             onOpenChange={onOpenChange}
             defaultProjectId={defaultProjectId}
+            defaultDepartmentId={defaultDepartmentId}
+            defaultParentTaskId={defaultParentTaskId}
+            defaultAssignedUserIds={defaultAssignedUserIds}
           />
         )}
       </DialogContent>
@@ -128,9 +137,20 @@ interface TaskFormFieldsProps {
   task?: TaskDto
   onOpenChange: (open: boolean) => void
   defaultProjectId?: string
+  defaultDepartmentId?: string
+  defaultParentTaskId?: number
+  defaultAssignedUserIds?: string[]
 }
 
-function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskFormFieldsProps) {
+function TaskFormFields({
+  mode,
+  task,
+  onOpenChange,
+  defaultProjectId,
+  defaultDepartmentId,
+  defaultParentTaskId,
+  defaultAssignedUserIds,
+}: TaskFormFieldsProps) {
   const { user, hasPermission } = useAuth()
   const { data: departments } = useDepartmentsQuery()
   const { data: projects } = useProjectsQuery()
@@ -143,7 +163,13 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
     if (mode === 'edit' && task) {
       return task.assignedUsers?.map((assigned) => String(assigned.id)) ?? []
     }
-    if (!showAssignField || !defaultProjectId) {
+    if (!showAssignField) {
+      return []
+    }
+    if (defaultAssignedUserIds) {
+      return defaultAssignedUserIds
+    }
+    if (!defaultProjectId) {
       return []
     }
     const project = projects?.find((p) => String(p.id) === toId(defaultProjectId))
@@ -153,7 +179,7 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
     mode === 'edit' && task ? toId(task.projectId) : toId(defaultProjectId)
   )
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | undefined>(() =>
-    mode === 'edit' && task ? toId(task.departmentId) : undefined
+    mode === 'edit' && task ? toId(task.departmentId) : toId(defaultDepartmentId)
   )
   const [selectedLabels, setSelectedLabels] = useState<LabelDto[]>(() =>
     mode === 'edit' && task?.labels ? [...task.labels] : []
@@ -206,7 +232,7 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
             title: '',
             description: '',
             priority: undefined,
-            departmentId: undefined,
+            departmentId: toId(defaultDepartmentId),
             projectId: toId(defaultProjectId),
             dueDate: '',
           },
@@ -270,6 +296,7 @@ function TaskFormFields({ mode, task, onOpenChange, defaultProjectId }: TaskForm
           projectId: toId(values.projectId) ?? null,
           assignedUserIds: showAssignField ? assignedUserIds : [],
           dueDate: toApiDueDate(values.dueDate),
+          parentTaskId: defaultParentTaskId ?? null,
         })
         if (labelIds.length > 0) {
           await updateLabelsMutation.mutateAsync({

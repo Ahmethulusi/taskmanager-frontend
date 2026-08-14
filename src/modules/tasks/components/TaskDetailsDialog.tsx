@@ -1,7 +1,10 @@
 import { useState, type ReactNode } from 'react'
+import { Lock } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 import { UserAvatar } from '@/components/UserAvatar'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Sheet,
@@ -15,6 +18,8 @@ import { getLabelColor } from '@/lib/labelColors'
 import { getStatusColor } from '@/lib/statusColors'
 import { ActivityTimeline } from '@/modules/activity/components/ActivityTimeline'
 import { AttachmentList } from '@/modules/attachments/components/AttachmentList'
+import { DependenciesSection } from '@/modules/tasks/components/DependenciesSection'
+import { SubtasksSection } from '@/modules/tasks/components/SubtasksSection'
 import { getPriorityDisplay } from '@/modules/tasks/utils/taskDisplay'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 
@@ -39,6 +44,7 @@ interface TaskDetailsDialogProps {
 }
 
 export function TaskDetailsDialog({ task, open, onOpenChange }: TaskDetailsDialogProps) {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('details')
   const priority = getPriorityDisplay(task.priority)
   const statusColor = getStatusColor(task.statusColorKey)
@@ -51,6 +57,15 @@ export function TaskDetailsDialog({ task, open, onOpenChange }: TaskDetailsDialo
       >
         <SheetHeader className="shrink-0 gap-2 border-b px-4 py-3 pr-14">
           <SheetTitle className="text-lg leading-snug">{task.title}</SheetTitle>
+          {task.parentTaskId !== null && (
+            <button
+              type="button"
+              className="w-fit truncate text-left text-xs text-muted-foreground hover:text-foreground hover:underline"
+              onClick={() => navigate(`/tasks/${task.parentTaskId}`)}
+            >
+              ↳ Ana görev: {task.parentTaskTitle}
+            </button>
+          )}
           <SheetDescription className="sr-only">Görev detayları ve yorumlar</SheetDescription>
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge variant="secondary" className="h-6 gap-1.5 border-transparent text-xs">
@@ -63,6 +78,15 @@ export function TaskDetailsDialog({ task, open, onOpenChange }: TaskDetailsDialo
             <Badge variant="secondary" className="h-6 text-xs">
               {priority.label}
             </Badge>
+            {task.isBlocked && (
+              <Badge
+                variant="secondary"
+                className="h-6 gap-1 border-orange-200 bg-orange-100 text-xs text-orange-800"
+              >
+                <Lock />
+                Blocked
+              </Badge>
+            )}
           </div>
           {task.description ? (
             <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">{task.description}</p>
@@ -79,19 +103,25 @@ export function TaskDetailsDialog({ task, open, onOpenChange }: TaskDetailsDialo
               value="details"
               className="flex-1 data-active:bg-background data-active:text-foreground data-active:shadow-sm"
             >
-              Detay
+              Genel
+            </TabsTrigger>
+            <TabsTrigger
+              value="relationships"
+              className="flex-1 data-active:bg-background data-active:text-foreground data-active:shadow-sm"
+            >
+              İlişkiler
+            </TabsTrigger>
+            <TabsTrigger
+              value="activity"
+              className="flex-1 data-active:bg-background data-active:text-foreground data-active:shadow-sm"
+            >
+              Yorumlar &amp; Hareketler
             </TabsTrigger>
             <TabsTrigger
               value="attachments"
               className="flex-1 data-active:bg-background data-active:text-foreground data-active:shadow-sm"
             >
               Ekler
-            </TabsTrigger>
-            <TabsTrigger
-              value="activity"
-              className="flex-1 data-active:bg-background data-active:text-foreground data-active:shadow-sm"
-            >
-              Aktivite
             </TabsTrigger>
           </TabsList>
 
@@ -154,11 +184,13 @@ export function TaskDetailsDialog({ task, open, onOpenChange }: TaskDetailsDialo
           </TabsContent>
 
           <TabsContent
-            value="attachments"
+            value="relationships"
             keepMounted
             className="no-scrollbar flex-1 overflow-y-auto px-4 py-3"
           >
-            <AttachmentList taskId={task.id} />
+            <SubtasksSection task={task} />
+            <Separator className="my-4" />
+            <DependenciesSection task={task} />
           </TabsContent>
 
           <TabsContent
@@ -167,6 +199,14 @@ export function TaskDetailsDialog({ task, open, onOpenChange }: TaskDetailsDialo
             className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-3 pb-4"
           >
             <ActivityTimeline taskId={task.id} />
+          </TabsContent>
+
+          <TabsContent
+            value="attachments"
+            keepMounted
+            className="no-scrollbar flex-1 overflow-y-auto px-4 py-3"
+          >
+            <AttachmentList taskId={task.id} />
           </TabsContent>
         </Tabs>
       </SheetContent>

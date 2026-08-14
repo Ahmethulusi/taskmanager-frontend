@@ -5,6 +5,27 @@ export interface TaskAssignedUser {
   fullName: string
 }
 
+export interface TaskRelationshipSummary {
+  taskId: number
+  taskTitle: string
+  statusName: string
+  statusColorKey: string
+  isCompletionStatus: boolean
+}
+
+export interface SubtaskSummary {
+  id: number
+  title: string
+  statusName: string
+  statusColorKey: string
+  isCompletionStatus: boolean
+}
+
+export interface SubtaskProgress {
+  totalCount: number
+  completedCount: number
+}
+
 export interface TaskDto {
   id: string
   title: string
@@ -25,4 +46,11 @@ export interface TaskDto {
   dueDate: string | null
   labels: LabelDto[]
   commentCount: number
+  parentTaskId: number | null
+  parentTaskTitle: string | null
+  subtasks: SubtaskSummary[]
+  subtaskProgress: SubtaskProgress | null
+  blockedBy: TaskRelationshipSummary[]
+  blocks: TaskRelationshipSummary[]
+  isBlocked: boolean
 }

@@ -1,7 +1,14 @@
 import { useState, type ReactNode, type CSSProperties } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { MoreVertical, Calendar, FolderKanban, MessageCircle } from 'lucide-react'
+import {
+  Calendar,
+  CornerDownRight,
+  FolderKanban,
+  Lock,
+  MessageCircle,
+  MoreVertical,
+} from 'lucide-react'
 
 import { UserAvatar } from '@/components/UserAvatar'
 import { Badge } from '@/components/ui/badge'
@@ -37,7 +44,7 @@ const PRIORITY_BADGE_CLASSES: Record<string, string> = {
 }
 
 const TASK_CARD_CLASSES =
-  'group rounded-md border-2 bg-card p-3 text-card-foreground cursor-grab active:cursor-grabbing'
+  'group relative rounded-md border-2 bg-card p-3 text-card-foreground cursor-grab active:cursor-grabbing'
 
 const dueDateFormatter = new Intl.DateTimeFormat('tr-TR', {
   day: 'numeric',
@@ -200,11 +207,26 @@ interface TaskCardBodyProps {
 
 function TaskCardBody({ task, action }: TaskCardBodyProps) {
   const priority = getPriorityDisplay(task.priority)
+  const isSubtask = task.parentTaskId != null
+  const borderColor = getStatusColor(task.statusColorKey).dot
 
   return (
     <>
       <div className="flex items-start gap-1">
+        {isSubtask && (
+          <CornerDownRight
+            className="mt-1 size-4 shrink-0"
+            style={{ color: borderColor }}
+            aria-hidden
+          />
+        )}
         <p className="min-w-0 flex-1 font-heading text-base font-medium">{task.title}</p>
+        {task.isBlocked && (
+          <Lock
+            className="mt-0.5 size-4 shrink-0 text-orange-600"
+            aria-label="Görev engellenmiş"
+          />
+        )}
         {action}
       </div>
 
@@ -271,6 +293,16 @@ function TaskCardBody({ task, action }: TaskCardBodyProps) {
           </div>
         )}
       </div>
+
+      {isSubtask && task.parentTaskTitle && (
+        <div
+          className="mt-2 flex min-w-0 items-center gap-1 text-xs text-muted-foreground"
+          title={task.parentTaskTitle}
+        >
+          <CornerDownRight className="size-3.5 shrink-0 text-indigo-500/80" />
+          <span className="truncate">{task.parentTaskTitle}</span>
+        </div>
+      )}
 
       {task.projectName && (
         <div className="mt-2 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">

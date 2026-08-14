@@ -295,7 +295,7 @@ export function TasksPage() {
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-hidden">{renderContent()}</div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{renderContent()}</div>
 
       <TaskFormDialog
         mode="create"

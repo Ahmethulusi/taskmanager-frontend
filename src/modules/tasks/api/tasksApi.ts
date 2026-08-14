@@ -20,6 +20,7 @@ export interface CreateTaskDto {
   projectId?: string | null
   assignedUserIds: string[]
   dueDate: string | null
+  parentTaskId?: number | null
 }
 
 export interface UpdateTaskDto {
@@ -62,5 +63,18 @@ export function updateTaskLabels(taskId: string, labelIds: string[]): Promise<Ta
   return apiFetch<TaskDto>(`/api/tasks/${taskId}/labels`, {
     method: 'PATCH',
     body: { labelIds },
+  })
+}
+
+export function addDependency(taskId: number, dependsOnTaskId: number): Promise<TaskDto> {
+  return apiFetch<TaskDto>(`/api/tasks/${taskId}/dependencies`, {
+    method: 'POST',
+    body: { dependsOnTaskId },
+  })
+}
+
+export function removeDependency(taskId: number, dependsOnTaskId: number): Promise<void> {
+  return apiFetch<void>(`/api/tasks/${taskId}/dependencies/${dependsOnTaskId}`, {
+    method: 'DELETE',
   })
 }

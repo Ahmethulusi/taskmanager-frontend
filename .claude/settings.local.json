@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx shadcn@latest init --help)",
+      "Bash(npm view *)",
+      "WebFetch(domain:ui.shadcn.com)",
+      "Bash(npx shadcn@latest init -p base-nova --template vite --dry-run)",
+      "Bash(node -e ' *)",
+      "Bash(npx shadcn@latest init -t vite -p vega -b base --css-variables -y)",
+      "Bash(npx shadcn@latest add button -y)",
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npx shadcn@latest add dialog alert-dialog select textarea -y)",
+      "Bash(node crud-smoke.mjs)"
+    ]
+  }
+}

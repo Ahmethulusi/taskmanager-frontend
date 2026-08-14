@@ -45,7 +45,7 @@ function AlertDialogContent({
 }) {
   return (
     <AlertDialogPortal>
-      <AlertDialogOverlay />
+      <AlertDialogOverlay forceRender />
       <AlertDialogPrimitive.Popup
         data-slot="alert-dialog-content"
         data-size={size}
