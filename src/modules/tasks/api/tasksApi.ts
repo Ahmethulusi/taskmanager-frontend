@@ -18,6 +18,7 @@ export interface CreateTaskDto {
   priority: string
   departmentId?: string | null
   projectId?: string | null
+  sprintId?: string | null
   assignedUserIds: string[]
   dueDate: string | null
   parentTaskId?: number | null
@@ -29,6 +30,7 @@ export interface UpdateTaskDto {
   priority: string
   departmentId?: string | null
   projectId?: string | null
+  sprintId?: string | null
   dueDate: string | null
 }
 

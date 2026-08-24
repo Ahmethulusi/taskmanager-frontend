@@ -106,9 +106,11 @@ function parseViewMode(value: string | null): TaskViewMode {
 interface TaskWorkspaceProps {
   /** Verildiğinde tüm görevler bu projeye sabitlenir; proje filtresi UI'si gizlenir. */
   fixedProjectId?: string
+  /** Verildiğinde tüm görevler ek olarak bu sprint'e sabitlenir. */
+  fixedSprintId?: string
 }
 
-export function TaskWorkspace({ fixedProjectId }: TaskWorkspaceProps) {
+export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspaceProps) {
   const {
     data,
     isLoading: tasksLoading,
@@ -141,13 +143,17 @@ export function TaskWorkspace({ fixedProjectId }: TaskWorkspaceProps) {
   const isError = tasksError || statusesError
   const error = tasksError ? tasksQueryError : statusesQueryError
 
+  const scopedTasks = fixedSprintId
+    ? (data ?? []).filter((task) => String(task.sprintId) === String(fixedSprintId))
+    : (data ?? [])
+
   const activeProject = fixedProjectId
     ? undefined
     : projects?.find((project) => String(project.id) === projectIdParam)
   const defaultProjectId =
     fixedProjectId ?? (projectIdParam && projectIdParam !== 'none' ? projectIdParam : undefined)
   const linkedTask = taskIdParam
-    ? (data ?? []).find((task) => String(task.id) === taskIdParam)
+    ? scopedTasks.find((task) => String(task.id) === taskIdParam)
     : undefined
 
   function clearTaskIdParam() {
@@ -222,8 +228,8 @@ export function TaskWorkspace({ fixedProjectId }: TaskWorkspaceProps) {
       SORT_OPTIONS.find((option) => option.value === sortOption) ?? SORT_OPTIONS[0]
     const sourceTasks =
       dueStatusFilter === 'all'
-        ? (data ?? [])
-        : (data ?? []).filter((task) => {
+        ? scopedTasks
+        : scopedTasks.filter((task) => {
             if (dueStatusFilter === 'overdue') return task.isOverdue
             if (dueStatusFilter === 'tomorrow') return task.dueUrgency === 'Tomorrow'
             return task.dueUrgency === 'Soon'
@@ -410,6 +416,7 @@ export function TaskWorkspace({ fixedProjectId }: TaskWorkspaceProps) {
         open={createDialogOpen}
         onOpenChange={handleCreateDialogOpenChange}
         defaultProjectId={defaultProjectId}
+        defaultSprintId={fixedSprintId}
         defaultDueDate={createDueDate}
       />
       {selectedCalendarTask && (

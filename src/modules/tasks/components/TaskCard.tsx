@@ -7,6 +7,7 @@ import {
   Clock,
   CornerDownRight,
   FolderKanban,
+  Layers,
   Lock,
   MessageCircle,
   MoreVertical,
@@ -29,7 +30,9 @@ import { useAuth } from '@/lib/AuthContext'
 import { getLabelColor } from '@/lib/labelColors'
 import { getStatusColor } from '@/lib/statusColors'
 import { cn } from '@/lib/utils'
+import { useSprintsQuery } from '@/modules/sprints/api/useSprintsQuery'
 import { useStatusesQuery } from '@/modules/statuses/api/useStatusesQuery'
+import { useAssignTaskToSprintMutation } from '@/modules/tasks/api/useAssignTaskToSprintMutation'
 import { useUpdateTaskStatusMutation } from '@/modules/tasks/api/useUpdateTaskStatusMutation'
 import { AssignTaskDialog } from '@/modules/tasks/components/AssignTaskDialog'
 import { DeleteTaskDialog } from '@/modules/tasks/components/DeleteTaskDialog'
@@ -76,11 +79,13 @@ interface TaskCardProps {
 export function TaskCard({ task }: TaskCardProps) {
   const { hasPermission } = useAuth()
   const { data: statuses } = useStatusesQuery()
+  const { data: sprints, isLoading: sprintsLoading } = useSprintsQuery(task.projectId ?? '')
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: String(task.id),
     data: { statusId: String(task.statusId) },
   })
   const { mutate, isPending, error } = useUpdateTaskStatusMutation()
+  const assignToSprint = useAssignTaskToSprintMutation()
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null)
 
   const otherStatuses =
@@ -145,6 +150,45 @@ export function TaskCard({ task }: TaskCardProps) {
                     ))}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
+                {task.projectId !== null && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>Sprint Değiştir</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {sprintsLoading ? (
+                        <DropdownMenuItem disabled>Yükleniyor...</DropdownMenuItem>
+                      ) : (
+                        <>
+                          {task.sprintId !== null && (
+                            <DropdownMenuItem
+                              disabled={assignToSprint.isPending}
+                              onClick={() =>
+                                assignToSprint.mutate({ task, sprintId: null })
+                              }
+                            >
+                              Backlog (Sprint Yok)
+                            </DropdownMenuItem>
+                          )}
+                          {(sprints ?? [])
+                            .filter((sprint) => String(sprint.id) !== String(task.sprintId))
+                            .map((sprint) => (
+                              <DropdownMenuItem
+                                key={String(sprint.id)}
+                                disabled={assignToSprint.isPending}
+                                onClick={() =>
+                                  assignToSprint.mutate({ task, sprintId: sprint.id })
+                                }
+                              >
+                                {sprint.name}
+                              </DropdownMenuItem>
+                            ))}
+                          {(sprints?.length ?? 0) === 0 && task.sprintId === null && (
+                            <DropdownMenuItem disabled>Bu projede sprint yok</DropdownMenuItem>
+                          )}
+                        </>
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
                 {canAssign && (
                   <DropdownMenuItem onClick={() => setOpenDialog('assign')}>Ata</DropdownMenuItem>
                 )}
@@ -160,6 +204,13 @@ export function TaskCard({ task }: TaskCardProps) {
         {error && (
           <p className="mt-2 text-xs text-destructive">
             {error instanceof Error ? error.message : 'Durum güncellenemedi'}
+          </p>
+        )}
+        {assignToSprint.error && (
+          <p className="mt-2 text-xs text-destructive">
+            {assignToSprint.error instanceof Error
+              ? assignToSprint.error.message
+              : 'Sprint güncellenemedi'}
           </p>
         )}
       </div>
@@ -267,6 +318,15 @@ function TaskCardBody({ task, action }: TaskCardBodyProps) {
               </Badge>
             )}
           </>
+        )}
+        {task.sprintName && (
+          <span
+            className="inline-flex h-6 min-w-0 max-w-28 items-center gap-1 text-xs text-muted-foreground"
+            title={task.sprintName}
+          >
+            <Layers className="size-3.5 shrink-0" />
+            <span className="truncate">{task.sprintName}</span>
+          </span>
         )}
       </div>
 

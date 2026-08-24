@@ -1,4 +1,4 @@
-export type NotificationType = 'TaskAssigned' | 'DeadlineApproaching' | 'NewComment'
+export type NotificationType = 'TaskAssigned' | 'DeadlineApproaching' | 'NewComment' | 'Mention'
 
 export interface NotificationDto {
   id: number

@@ -41,6 +41,8 @@ export interface TaskDto {
   departmentName: string | null
   projectId: string | null
   projectName: string | null
+  sprintId: string | null
+  sprintName: string | null
   createdByUserId: string
   createdByUserName: string
   assignedUsers: TaskAssignedUser[]

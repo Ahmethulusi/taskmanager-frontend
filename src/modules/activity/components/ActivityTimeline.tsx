@@ -25,8 +25,12 @@ import type { AttachmentDto } from '@/modules/attachments/utils/types'
 import { useCommentsQuery } from '@/modules/comments/api/useCommentsQuery'
 import { useDeleteCommentMutation } from '@/modules/comments/api/useDeleteCommentMutation'
 import { useUpdateCommentMutation } from '@/modules/comments/api/useUpdateCommentMutation'
+import { CommentReactions } from '@/modules/comments/components/CommentReactions'
+import { getMentionCandidates } from '@/modules/comments/utils/mentionCandidates'
+import { renderCommentContent } from '@/modules/comments/utils/renderMentions'
 import type { CommentDto } from '@/modules/comments/utils/types'
 import { TaskComments } from '@/modules/tasks/components/TaskComments'
+import type { TaskDto } from '@/modules/tasks/utils/types'
 
 const timelineDateFormatter = new Intl.DateTimeFormat('tr-TR', {
   day: '2-digit',
@@ -44,9 +48,10 @@ type TimelineItem =
 
 interface ActivityTimelineProps {
   taskId: string
+  task: TaskDto
 }
 
-export function ActivityTimeline({ taskId }: ActivityTimelineProps) {
+export function ActivityTimeline({ taskId, task }: ActivityTimelineProps) {
   const [filter, setFilter] = useState<TimelineFilter>('all')
 
   const {
@@ -122,7 +127,7 @@ export function ActivityTimeline({ taskId }: ActivityTimelineProps) {
         </div>
       </ScrollAreaWithFade>
 
-      <TaskComments taskId={taskId} />
+      <TaskComments taskId={taskId} candidates={getMentionCandidates(task, comments ?? [])} />
     </section>
   )
 }
@@ -294,7 +299,9 @@ function CommentTimelineItem({ comment, taskId }: CommentTimelineItemProps) {
                 : 'rounded-2xl rounded-bl-sm bg-muted text-foreground'
             )}
           >
-            <p className="whitespace-pre-wrap">{comment.content}</p>
+            <p className="whitespace-pre-wrap">
+              {renderCommentContent(comment.content, comment.mentionedUsers ?? [])}
+            </p>
 
             {comment.attachments?.length > 0 && (
               <ul className="space-y-1 border-t border-foreground/10 pt-1.5">
@@ -305,6 +312,11 @@ function CommentTimelineItem({ comment, taskId }: CommentTimelineItemProps) {
                 ))}
               </ul>
             )}
+            <CommentReactions
+              commentId={commentId}
+              taskId={taskId}
+              reactions={comment.reactions ?? []}
+            />
           </div>
         )}
 

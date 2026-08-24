@@ -2,22 +2,25 @@ import { useRef, useState, type ChangeEvent } from 'react'
 import { Loader2, Paperclip, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { useUploadAttachmentMutation } from '@/modules/attachments/api/useUploadAttachmentMutation'
 import { getAttachmentIcon } from '@/modules/attachments/utils/fileIcon'
 import type { AttachmentDto } from '@/modules/attachments/utils/types'
 import { useCreateCommentMutation } from '@/modules/comments/api/useCreateCommentMutation'
+import { MentionTextarea } from '@/modules/comments/components/MentionTextarea'
+import type { MentionedUserDto } from '@/modules/comments/utils/types'
 
 interface TaskCommentsProps {
   taskId: string
+  candidates: MentionedUserDto[]
 }
 
-export function TaskComments({ taskId }: TaskCommentsProps) {
+export function TaskComments({ taskId, candidates }: TaskCommentsProps) {
   const createMutation = useCreateCommentMutation()
   const uploadMutation = useUploadAttachmentMutation()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [newContent, setNewContent] = useState('')
+  const [mentionedIds, setMentionedIds] = useState<number[]>([])
   const [pendingAttachments, setPendingAttachments] = useState<AttachmentDto[]>([])
   const [actionError, setActionError] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -51,8 +54,10 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
         taskId,
         content,
         attachmentIds: pendingAttachments.map((attachment) => String(attachment.id)),
+        mentionedUserIds: mentionedIds,
       })
       setNewContent('')
+      setMentionedIds([])
       setPendingAttachments([])
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Yorum eklenemedi')
@@ -78,9 +83,12 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
       )}
 
       <div className="relative">
-        <Textarea
+        <MentionTextarea
           value={newContent}
-          onChange={(event) => setNewContent(event.target.value)}
+          onChange={setNewContent}
+          candidates={candidates}
+          mentionedIds={mentionedIds}
+          onMentionedIdsChange={setMentionedIds}
           placeholder="Yorumunuzu yazın"
           disabled={isBusy}
           className="min-h-20 resize-none pr-10"

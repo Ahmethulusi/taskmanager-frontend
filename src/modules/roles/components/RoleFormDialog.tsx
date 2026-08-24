@@ -104,7 +104,7 @@ function RoleFormFields({ mode, role, onOpenChange }: RoleFormFieldsProps) {
             items={
               permissions?.map((permission) => ({
                 id: toId(permission.id),
-                label: `${permission.key} — ${permission.description}`,
+                label: permission.description,
               })) ?? []
             }
             selectedIds={permissionIds}

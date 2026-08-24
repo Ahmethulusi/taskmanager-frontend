@@ -8,6 +8,7 @@ import { getProjectIcon } from '@/lib/projectIcons'
 import { ProjectMembersTab } from '@/modules/projects/components/ProjectMembersTab'
 import { ProjectOverviewTab } from '@/modules/projects/components/ProjectOverviewTab'
 import { useProjectQuery } from '@/modules/projects/api/useProjectQuery'
+import { SprintsTab } from '@/modules/sprints/components/SprintsTab'
 import { TaskWorkspace } from '@/modules/tasks/components/TaskWorkspace'
 import { useTasksQuery } from '@/modules/tasks/api/useTasksQuery'
 
@@ -68,6 +69,7 @@ export function ProjectDetailPage() {
           <TabsList className="shrink-0">
             <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
             <TabsTrigger value="tasks">Görevler</TabsTrigger>
+            <TabsTrigger value="sprints">Sprint'ler</TabsTrigger>
             <TabsTrigger value="members">Üyeler</TabsTrigger>
           </TabsList>
 
@@ -81,6 +83,14 @@ export function ProjectDetailPage() {
             className="flex min-h-0 flex-1 flex-col overflow-hidden"
           >
             <TaskWorkspace fixedProjectId={project.id} />
+          </TabsContent>
+
+          <TabsContent
+            value="sprints"
+            keepMounted
+            className="flex min-h-0 flex-1 flex-col overflow-hidden"
+          >
+            <SprintsTab project={project} tasks={projectTasks} />
           </TabsContent>
 
           <TabsContent value="members" keepMounted className="min-h-0 flex-1 overflow-y-auto">

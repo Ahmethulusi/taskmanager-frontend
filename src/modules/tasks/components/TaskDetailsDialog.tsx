@@ -226,7 +226,7 @@ export function TaskDetailsDialog({ task, open, onOpenChange }: TaskDetailsDialo
             keepMounted
             className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-3 pb-4"
           >
-            <ActivityTimeline taskId={task.id} />
+            <ActivityTimeline taskId={task.id} task={task} />
           </TabsContent>
 
           <TabsContent

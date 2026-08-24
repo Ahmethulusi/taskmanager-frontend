@@ -96,6 +96,7 @@ interface TaskFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   defaultProjectId?: string
+  defaultSprintId?: string
   defaultDepartmentId?: string
   defaultParentTaskId?: number
   defaultAssignedUserIds?: string[]
@@ -108,6 +109,7 @@ export function TaskFormDialog({
   open,
   onOpenChange,
   defaultProjectId,
+  defaultSprintId,
   defaultDepartmentId,
   defaultParentTaskId,
   defaultAssignedUserIds,
@@ -124,6 +126,7 @@ export function TaskFormDialog({
             task={task}
             onOpenChange={onOpenChange}
             defaultProjectId={defaultProjectId}
+            defaultSprintId={defaultSprintId}
             defaultDepartmentId={defaultDepartmentId}
             defaultParentTaskId={defaultParentTaskId}
             defaultAssignedUserIds={defaultAssignedUserIds}
@@ -140,6 +143,7 @@ interface TaskFormFieldsProps {
   task?: TaskDto
   onOpenChange: (open: boolean) => void
   defaultProjectId?: string
+  defaultSprintId?: string
   defaultDepartmentId?: string
   defaultParentTaskId?: number
   defaultAssignedUserIds?: string[]
@@ -151,6 +155,7 @@ function TaskFormFields({
   task,
   onOpenChange,
   defaultProjectId,
+  defaultSprintId,
   defaultDepartmentId,
   defaultParentTaskId,
   defaultAssignedUserIds,
@@ -299,6 +304,7 @@ function TaskFormFields({
           priority: values.priority,
           departmentId: toId(values.departmentId),
           projectId: toId(values.projectId) ?? null,
+          sprintId: defaultSprintId ?? null,
           assignedUserIds: showAssignField ? assignedUserIds : [],
           dueDate: toApiDueDate(values.dueDate),
           parentTaskId: defaultParentTaskId ?? null,
