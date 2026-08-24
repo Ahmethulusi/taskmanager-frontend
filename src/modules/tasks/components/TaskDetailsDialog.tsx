@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Lock } from 'lucide-react'
+import { AlertCircle, Clock, Lock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { UserAvatar } from '@/components/UserAvatar'
@@ -20,6 +20,7 @@ import { ActivityTimeline } from '@/modules/activity/components/ActivityTimeline
 import { AttachmentList } from '@/modules/attachments/components/AttachmentList'
 import { DependenciesSection } from '@/modules/tasks/components/DependenciesSection'
 import { SubtasksSection } from '@/modules/tasks/components/SubtasksSection'
+import { getDueUrgencyDisplay } from '@/modules/tasks/utils/dueUrgencyDisplay'
 import { getPriorityDisplay } from '@/modules/tasks/utils/taskDisplay'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 
@@ -48,6 +49,7 @@ export function TaskDetailsDialog({ task, open, onOpenChange }: TaskDetailsDialo
   const [activeTab, setActiveTab] = useState('details')
   const priority = getPriorityDisplay(task.priority)
   const statusColor = getStatusColor(task.statusColorKey)
+  const dueUrgency = !task.isOverdue ? getDueUrgencyDisplay(task.dueUrgency) : null
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -132,7 +134,33 @@ export function TaskDetailsDialog({ task, open, onOpenChange }: TaskDetailsDialo
           >
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
               <DetailField label="Bitiş">
-                {task.dueDate ? dueDateFormatter.format(new Date(task.dueDate)) : '—'}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span>
+                    {task.dueDate ? dueDateFormatter.format(new Date(task.dueDate)) : '—'}
+                  </span>
+                  {task.isOverdue && (
+                    <Badge
+                      variant="secondary"
+                      className="h-5 gap-1 border-destructive/30 bg-destructive/10 px-1.5 text-xs text-destructive"
+                    >
+                      <AlertCircle className="size-3" />
+                      Gecikmiş
+                    </Badge>
+                  )}
+                  {dueUrgency && (
+                    <Badge
+                      variant="secondary"
+                      className="h-5 gap-1 border-transparent px-1.5 text-xs"
+                      style={{
+                        color: dueUrgency.color,
+                        backgroundColor: `${dueUrgency.color}1A`,
+                      }}
+                    >
+                      <Clock className="size-3" />
+                      {dueUrgency.label}
+                    </Badge>
+                  )}
+                </div>
               </DetailField>
               <DetailField label="Departman">{task.departmentName ?? '—'}</DetailField>
               <DetailField label="Proje">{task.projectName ?? '—'}</DetailField>

@@ -14,7 +14,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useTasksQuery } from '@/modules/tasks/api/useTasksQuery'
+import { CalendarView } from '@/modules/tasks/components/CalendarView'
+import { TaskDetailsDialog } from '@/modules/tasks/components/TaskDetailsDialog'
 import { TaskFormDialog } from '@/modules/tasks/components/TaskFormDialog'
+import { TaskListView } from '@/modules/tasks/components/TaskListView'
+import { TaskViewSwitcher } from '@/modules/tasks/components/TaskViewSwitcher'
 import {
   filterAndSortTasks,
   type DateFilter,
@@ -23,6 +27,9 @@ import {
   type SortDirection,
   type SortField,
 } from '@/modules/tasks/utils/taskFilters'
+import type { TaskDto } from '@/modules/tasks/utils/types'
+import { toDateKey } from '@/modules/tasks/utils/calendarDates'
+import type { TaskViewMode } from '@/modules/tasks/utils/viewMode'
 import { TaskBoardView } from '@/modules/tasks/views/TaskBoardView'
 import { useProjectsQuery } from '@/modules/projects/api/useProjectsQuery'
 import { useStatusesQuery } from '@/modules/statuses/api/useStatusesQuery'
@@ -39,6 +46,15 @@ const DATE_OPTIONS: { value: DateFilter; label: string }[] = [
   { value: 'today', label: 'Bugün' },
   { value: 'thisWeek', label: 'Bu Hafta' },
   { value: 'thisMonth', label: 'Bu Ay' },
+]
+
+type DueStatusFilter = 'all' | 'overdue' | 'tomorrow' | 'soon'
+
+const DUE_STATUS_OPTIONS: { value: DueStatusFilter; label: string }[] = [
+  { value: 'all', label: 'Tümü' },
+  { value: 'overdue', label: 'Gecikmiş' },
+  { value: 'tomorrow', label: 'Yarın Bitiyor' },
+  { value: 'soon', label: 'Yakında Bitiyor' },
 ]
 
 type SortOption =
@@ -81,6 +97,13 @@ const SORT_OPTIONS: {
   },
 ]
 
+function parseViewMode(value: string | null): TaskViewMode {
+  if (value === 'list' || value === 'calendar' || value === 'board') {
+    return value
+  }
+  return 'calendar'
+}
+
 export function TasksPage() {
   const {
     data,
@@ -99,11 +122,16 @@ export function TasksPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const projectIdParam = searchParams.get('projectId')
   const projectFilter: ProjectFilter = projectIdParam ?? 'all'
+  const viewMode = parseViewMode(searchParams.get('view'))
+  const taskIdParam = searchParams.get('taskId')
 
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all')
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
+  const [dueStatusFilter, setDueStatusFilter] = useState<DueStatusFilter>('all')
   const [sortOption, setSortOption] = useState<SortOption>('default')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [createDueDate, setCreateDueDate] = useState<string | undefined>()
+  const [selectedCalendarTask, setSelectedCalendarTask] = useState<TaskDto | null>(null)
 
   const isLoading = tasksLoading || statusesLoading
   const isError = tasksError || statusesError
@@ -112,6 +140,27 @@ export function TasksPage() {
   const activeProject = projects?.find((project) => String(project.id) === projectIdParam)
   const defaultProjectId =
     projectIdParam && projectIdParam !== 'none' ? projectIdParam : undefined
+  const linkedTask = taskIdParam
+    ? (data ?? []).find((task) => String(task.id) === taskIdParam)
+    : undefined
+
+  function clearTaskIdParam() {
+    const next = new URLSearchParams(searchParams)
+    next.delete('taskId')
+    setSearchParams(next)
+  }
+
+  function openCreateDialog(dueDate?: string) {
+    setCreateDueDate(dueDate)
+    setCreateDialogOpen(true)
+  }
+
+  function handleCreateDialogOpenChange(open: boolean) {
+    setCreateDialogOpen(open)
+    if (!open) {
+      setCreateDueDate(undefined)
+    }
+  }
 
   function setProjectFilter(value: ProjectFilter) {
     if (value === 'all') {
@@ -123,6 +172,16 @@ export function TasksPage() {
       next.set('projectId', value)
       setSearchParams(next)
     }
+  }
+
+  function setViewMode(mode: TaskViewMode) {
+    const next = new URLSearchParams(searchParams)
+    if (mode === 'calendar') {
+      next.delete('view')
+    } else {
+      next.set('view', mode)
+    }
+    setSearchParams(next)
   }
 
   function clearProjectFilter() {
@@ -155,8 +214,16 @@ export function TasksPage() {
 
     const selectedSort =
       SORT_OPTIONS.find((option) => option.value === sortOption) ?? SORT_OPTIONS[0]
+    const sourceTasks =
+      dueStatusFilter === 'all'
+        ? (data ?? [])
+        : (data ?? []).filter((task) => {
+            if (dueStatusFilter === 'overdue') return task.isOverdue
+            if (dueStatusFilter === 'tomorrow') return task.dueUrgency === 'Tomorrow'
+            return task.dueUrgency === 'Soon'
+          })
     const tasks = filterAndSortTasks(
-      data ?? [],
+      sourceTasks,
       priorityFilter,
       dateFilter,
       projectFilter,
@@ -268,15 +335,51 @@ export function TasksPage() {
               </SelectContent>
             </Select>
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="due-status-filter" className="text-base">
+              Bitiş Durumu
+            </Label>
+            <Select
+              items={DUE_STATUS_OPTIONS}
+              value={dueStatusFilter}
+              onValueChange={(value) => setDueStatusFilter(value as DueStatusFilter)}
+            >
+              <SelectTrigger id="due-status-filter" className="h-10 w-48 text-base">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DUE_STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value} className="text-base">
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <TaskViewSwitcher value={viewMode} onChange={setViewMode} />
         </div>
 
-        {tasks.length === 0 ? (
+        {viewMode === 'calendar' ? (
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <CalendarView
+              tasks={tasks}
+              onTaskClick={setSelectedCalendarTask}
+              onCreateTask={(date) => openCreateDialog(toDateKey(date))}
+            />
+          </div>
+        ) : tasks.length === 0 ? (
           <p className="p-4 text-base text-muted-foreground">
             {defaultProjectId ? 'Bu projede henüz görev yok' : 'Görev bulunamadı'}
           </p>
         ) : (
           <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-            <TaskBoardView tasks={tasks} statuses={statuses ?? []} />
+            {viewMode === 'list' ? (
+              <TaskListView tasks={tasks} />
+            ) : (
+              <TaskBoardView tasks={tasks} statuses={statuses ?? []} />
+            )}
           </div>
         )}
       </div>
@@ -288,7 +391,7 @@ export function TasksPage() {
       <PageHeader
         title="Görevler"
         actions={
-          <Button type="button" size="lg" onClick={() => setCreateDialogOpen(true)}>
+          <Button type="button" size="lg" onClick={() => openCreateDialog()}>
             <Plus />
             Yeni Görev
           </Button>
@@ -300,9 +403,28 @@ export function TasksPage() {
       <TaskFormDialog
         mode="create"
         open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+        onOpenChange={handleCreateDialogOpenChange}
         defaultProjectId={defaultProjectId}
+        defaultDueDate={createDueDate}
       />
+      {selectedCalendarTask && (
+        <TaskDetailsDialog
+          task={selectedCalendarTask}
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedCalendarTask(null)
+          }}
+        />
+      )}
+      {linkedTask && (
+        <TaskDetailsDialog
+          task={linkedTask}
+          open
+          onOpenChange={(open) => {
+            if (!open) clearTaskIdParam()
+          }}
+        />
+      )}
     </div>
   )
 }

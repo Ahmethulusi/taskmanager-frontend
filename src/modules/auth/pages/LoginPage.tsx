@@ -35,7 +35,7 @@ export function LoginPage() {
     setError(null)
     try {
       await login(values.email, values.password)
-      navigate('/tasks')
+      navigate('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Giriş yapılamadı')
     }

@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { ChangePasswordPage } from '@/modules/auth/pages/ChangePasswordPage'
 import { LoginPage } from '@/modules/auth/pages/LoginPage'
 import { RegisterPage } from '@/modules/auth/pages/RegisterPage'
+import { DashboardPage } from '@/modules/dashboard/pages/DashboardPage'
 import { TasksPage } from '@/modules/tasks/pages/TasksPage'
 import { UsersPage } from '@/modules/users/pages/UsersPage'
 import { DepartmentsPage } from '@/modules/departments/pages/DepartmentsPage'
@@ -30,6 +31,10 @@ export const router = createBrowserRouter([
     children: [
       {
         element: <ProtectedRoute />,
+        children: [{ path: '/dashboard', element: <DashboardPage /> }],
+      },
+      {
+        element: <ProtectedRoute />,
         children: [{ path: '/tasks', element: <TasksPage /> }],
       },
       {
@@ -54,5 +59,5 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  { path: '/', element: <Navigate to="/tasks" replace /> },
+  { path: '/', element: <Navigate to="/dashboard" replace /> },
 ])

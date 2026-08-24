@@ -53,4 +53,6 @@ export interface TaskDto {
   blockedBy: TaskRelationshipSummary[]
   blocks: TaskRelationshipSummary[]
   isBlocked: boolean
+  isOverdue: boolean
+  dueUrgency: 'Tomorrow' | 'Soon' | null
 }

@@ -23,7 +23,7 @@ export function ProtectedRoute({ requiredPermission }: ProtectedRouteProps) {
   }
 
   if (requiredPermission && !hasPermission(requiredPermission)) {
-    return <Navigate to="/tasks" replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   return <Outlet />

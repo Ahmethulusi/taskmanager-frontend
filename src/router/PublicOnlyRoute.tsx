@@ -10,7 +10,7 @@ export function PublicOnlyRoute() {
   }
 
   if (user) {
-    return <Navigate to="/tasks" replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   return <Outlet />

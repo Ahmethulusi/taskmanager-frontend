@@ -2,7 +2,9 @@ import { useState, type ReactNode, type CSSProperties } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
+  AlertCircle,
   Calendar,
+  Clock,
   CornerDownRight,
   FolderKanban,
   Lock,
@@ -33,6 +35,7 @@ import { AssignTaskDialog } from '@/modules/tasks/components/AssignTaskDialog'
 import { DeleteTaskDialog } from '@/modules/tasks/components/DeleteTaskDialog'
 import { TaskDetailsDialog } from '@/modules/tasks/components/TaskDetailsDialog'
 import { TaskFormDialog } from '@/modules/tasks/components/TaskFormDialog'
+import { getDueUrgencyDisplay } from '@/modules/tasks/utils/dueUrgencyDisplay'
 import { getPriorityDisplay } from '@/modules/tasks/utils/taskDisplay'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 
@@ -207,6 +210,7 @@ interface TaskCardBodyProps {
 
 function TaskCardBody({ task, action }: TaskCardBodyProps) {
   const priority = getPriorityDisplay(task.priority)
+  const dueUrgency = !task.isOverdue ? getDueUrgencyDisplay(task.dueUrgency) : null
   const isSubtask = task.parentTaskId != null
   const borderColor = getStatusColor(task.statusColorKey).dot
 
@@ -281,9 +285,21 @@ function TaskCardBody({ task, action }: TaskCardBodyProps) {
           <span>Atanmadı</span>
         )}
         {task.dueDate && (
-          <div className="flex items-center gap-1">
+          <div
+            className={cn(
+              'flex items-center gap-1',
+              task.isOverdue && 'text-destructive'
+            )}
+            style={dueUrgency ? { color: dueUrgency.color } : undefined}
+          >
             <Calendar className="size-3.5 shrink-0" />
             <span>{dueDateFormatter.format(new Date(task.dueDate))}</span>
+            {task.isOverdue && (
+              <AlertCircle className="size-3.5 shrink-0" aria-label="Gecikmiş" />
+            )}
+            {dueUrgency && (
+              <Clock className="size-3.5 shrink-0" aria-label={dueUrgency.label} />
+            )}
           </div>
         )}
         {task.commentCount > 0 && (

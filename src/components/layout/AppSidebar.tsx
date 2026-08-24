@@ -2,8 +2,10 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Building2,
   FolderKanban,
+  LayoutDashboard,
   ListChecks,
   LogOut,
+  Search,
   ShieldCheck,
   SquareKanban,
   Tags,
@@ -33,6 +35,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/tasks', label: 'Görevler', icon: ListChecks },
   { to: '/users', label: 'Kullanıcılar', icon: Users },
   { to: '/departments', label: 'Departmanlar', icon: Building2, permission: 'departments.manage' },
@@ -41,7 +44,11 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/roles', label: 'Roller', icon: ShieldCheck, permission: 'roles.manage' },
 ]
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  onSearchClick?: () => void
+}
+
+export function AppSidebar({ onSearchClick }: AppSidebarProps) {
   const { user, logout, hasPermission } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -67,6 +74,16 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu className="gap-2">
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                className="h-11 gap-3 font-heading text-base text-muted-foreground group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0! [&_svg]:size-5"
+                tooltip="Ara (Ctrl+K)"
+                onClick={onSearchClick}
+              >
+                <Search />
+                <span className="group-data-[collapsible=icon]:hidden">Ara... (Ctrl+K)</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             {items.map((item) => (
               <SidebarMenuItem key={item.to}>
                 <SidebarMenuButton

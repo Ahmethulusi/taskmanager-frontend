@@ -99,6 +99,7 @@ interface TaskFormDialogProps {
   defaultDepartmentId?: string
   defaultParentTaskId?: number
   defaultAssignedUserIds?: string[]
+  defaultDueDate?: string
 }
 
 export function TaskFormDialog({
@@ -110,6 +111,7 @@ export function TaskFormDialog({
   defaultDepartmentId,
   defaultParentTaskId,
   defaultAssignedUserIds,
+  defaultDueDate,
 }: TaskFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -125,6 +127,7 @@ export function TaskFormDialog({
             defaultDepartmentId={defaultDepartmentId}
             defaultParentTaskId={defaultParentTaskId}
             defaultAssignedUserIds={defaultAssignedUserIds}
+            defaultDueDate={defaultDueDate}
           />
         )}
       </DialogContent>
@@ -140,6 +143,7 @@ interface TaskFormFieldsProps {
   defaultDepartmentId?: string
   defaultParentTaskId?: number
   defaultAssignedUserIds?: string[]
+  defaultDueDate?: string
 }
 
 function TaskFormFields({
@@ -150,6 +154,7 @@ function TaskFormFields({
   defaultDepartmentId,
   defaultParentTaskId,
   defaultAssignedUserIds,
+  defaultDueDate,
 }: TaskFormFieldsProps) {
   const { user, hasPermission } = useAuth()
   const { data: departments } = useDepartmentsQuery()
@@ -234,7 +239,7 @@ function TaskFormFields({
             priority: undefined,
             departmentId: toId(defaultDepartmentId),
             projectId: toId(defaultProjectId),
-            dueDate: '',
+            dueDate: defaultDueDate ?? '',
           },
   })
 

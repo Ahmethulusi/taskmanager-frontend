@@ -35,7 +35,7 @@ export function RegisterPage() {
     setError(null)
     try {
       await registerUser(values.fullName, values.email, values.password)
-      navigate('/tasks')
+      navigate('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kayıt olunamadı')
     }

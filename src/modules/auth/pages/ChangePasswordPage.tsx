@@ -39,7 +39,7 @@ export function ChangePasswordPage() {
     try {
       await authApi.changePassword(values.currentPassword, values.newPassword)
       updateMustChangePassword(false)
-      navigate('/tasks')
+      navigate('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Şifre değiştirilemedi')
     }

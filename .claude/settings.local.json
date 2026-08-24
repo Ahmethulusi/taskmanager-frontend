@@ -11,7 +11,9 @@
       "Bash(npm run *)",
       "Bash(npm install *)",
       "Bash(npx shadcn@latest add dialog alert-dialog select textarea -y)",
-      "Bash(node crud-smoke.mjs)"
+      "Bash(node crud-smoke.mjs)",
+      "Read(//c/Users/90533/source/repos/TaskMngBack/Services/**)",
+      "Bash(node probe2.js)"
     ]
   }
 }
