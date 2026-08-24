@@ -26,6 +26,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { useAuth } from '@/lib/AuthContext'
+import { NotificationBell } from '@/modules/notifications/components/NotificationBell'
 
 interface NavItem {
   to: string
@@ -102,6 +103,9 @@ export function AppSidebar({ onSearchClick }: AppSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter className="gap-3">
+        <div className="flex items-center px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <NotificationBell />
+        </div>
         {user && (
           <div className="flex items-center gap-2 px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
             <UserAvatar name={user.fullName} />

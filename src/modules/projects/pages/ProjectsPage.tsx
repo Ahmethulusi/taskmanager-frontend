@@ -8,6 +8,7 @@ import { useProjectsQuery } from '@/modules/projects/api/useProjectsQuery'
 import { DeleteProjectDialog } from '@/modules/projects/components/DeleteProjectDialog'
 import { ProjectCard } from '@/modules/projects/components/ProjectCard'
 import { ProjectFormDialog } from '@/modules/projects/components/ProjectFormDialog'
+import { computeProjectStats } from '@/modules/projects/utils/projectStats'
 import type { ProjectDto } from '@/modules/projects/utils/types'
 import { useTasksQuery } from '@/modules/tasks/api/useTasksQuery'
 
@@ -36,10 +37,6 @@ export function ProjectsPage() {
     setOpenDialog('delete')
   }
 
-  function getTaskCount(projectId: string): number {
-    return tasks?.filter((task) => String(task.projectId) === String(projectId)).length ?? 0
-  }
-
   function renderContent() {
     if (isLoading) {
       return <p className="p-4 text-base">Yükleniyor...</p>
@@ -65,7 +62,7 @@ export function ProjectsPage() {
           <ProjectCard
             key={project.id}
             project={project}
-            taskCount={getTaskCount(project.id)}
+            stats={computeProjectStats(project.id, tasks ?? [])}
             onEdit={() => openEdit(project)}
             onDelete={() => openDelete(project)}
           />

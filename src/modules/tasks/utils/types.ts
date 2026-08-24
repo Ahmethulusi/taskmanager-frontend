@@ -33,6 +33,7 @@ export interface TaskDto {
   statusId: string
   statusName: string
   statusColorKey: string
+  isCompletionStatus: boolean
   priority: string
   createdAt: string
   updatedAt: string | null

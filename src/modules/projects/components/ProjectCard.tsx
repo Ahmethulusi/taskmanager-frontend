@@ -1,7 +1,9 @@
 import { createElement } from 'react'
-import { ListChecks, MoreVertical, Pencil, Trash2, Users } from 'lucide-react'
+import { MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
+import { UserAvatar } from '@/components/UserAvatar'
+import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,20 +12,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Progress } from '@/components/ui/progress'
 import { useAuth } from '@/lib/AuthContext'
 import { getCurrentUserId } from '@/lib/currentUser'
 import { getProjectColor } from '@/lib/projectColors'
 import { getProjectIcon } from '@/lib/projectIcons'
 import type { ProjectDto } from '@/modules/projects/utils/types'
+import type { ProjectStats } from '@/modules/projects/utils/projectStats'
+
+const MAX_VISIBLE_MEMBERS = 4
 
 interface ProjectCardProps {
   project: ProjectDto
-  taskCount: number
+  stats: ProjectStats
   onEdit: () => void
   onDelete: () => void
 }
 
-export function ProjectCard({ project, taskCount, onEdit, onDelete }: ProjectCardProps) {
+export function ProjectCard({ project, stats, onEdit, onDelete }: ProjectCardProps) {
   const navigate = useNavigate()
   const { hasPermission } = useAuth()
   const color = getProjectColor(project.id)
@@ -32,8 +38,15 @@ export function ProjectCard({ project, taskCount, onEdit, onDelete }: ProjectCar
   const myMembership = project.members?.find((member) => member.userId === currentUserId)
   const canManage = hasPermission('projects.manage') || myMembership?.role === 'Owner'
 
+  const members = project.members ?? []
+  const visibleMembers = members.slice(0, MAX_VISIBLE_MEMBERS)
+  const hiddenMemberCount = members.length - visibleMembers.length
+
   return (
-    <Card className="group flex h-56 flex-col justify-between p-4 transition-colors duration-200 hover:bg-muted">
+    <Card
+      className="group flex h-60 cursor-pointer flex-col justify-between p-4 transition-colors duration-200 hover:bg-muted"
+      onClick={() => navigate(`/projects/${project.id}`)}
+    >
       <div className="flex items-start justify-between">
         <div
           className="flex size-10 origin-left items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-115"
@@ -45,19 +58,8 @@ export function ProjectCard({ project, taskCount, onEdit, onDelete }: ProjectCar
           })}
         </div>
 
-        <div className="flex items-center">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="cursor-pointer hover:bg-background dark:hover:bg-card"
-            onClick={() => navigate(`/tasks?projectId=${project.id}`)}
-          >
-            <ListChecks />
-            <span className="sr-only">Görevleri görüntüle</span>
-          </Button>
-
-          {canManage && (
+        {canManage && (
+          <div onClick={(event) => event.stopPropagation()}>
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -83,8 +85,8 @@ export function ProjectCard({ project, taskCount, onEdit, onDelete }: ProjectCar
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -96,12 +98,28 @@ export function ProjectCard({ project, taskCount, onEdit, onDelete }: ProjectCar
         </p>
       </div>
 
-      <div className="flex items-center gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
-        <span>{taskCount} görev</span>
-        <span className="flex items-center gap-1">
-          <Users className="size-3.5" />
-          {project.members?.length ?? 0} üye
-        </span>
+      <div className="flex flex-col gap-2 border-t border-border pt-3">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{stats.totalCount} görev</span>
+          {members.length > 0 && (
+            <AvatarGroup>
+              {visibleMembers.map((member) => (
+                <UserAvatar key={member.userId} name={member.fullName} size="sm" />
+              ))}
+              {hiddenMemberCount > 0 && (
+                <AvatarGroupCount>+{hiddenMemberCount}</AvatarGroupCount>
+              )}
+            </AvatarGroup>
+          )}
+        </div>
+
+        <Progress value={stats.progressPercentage} />
+
+        {stats.overdueCount > 0 && (
+          <span className="text-xs font-medium text-destructive">
+            {stats.overdueCount} gecikmiş
+          </span>
+        )}
       </div>
     </Card>
   )

@@ -33,3 +33,14 @@ export interface UpdateProjectDto {
   iconKey: string | null
   members: ProjectMemberInput[]
 }
+
+export interface ProjectActivityItemDto {
+  taskId: string
+  taskTitle: string
+  userId: string
+  userFullName: string
+  fieldName: string
+  oldValue: string | null
+  newValue: string | null
+  createdAt: string
+}
