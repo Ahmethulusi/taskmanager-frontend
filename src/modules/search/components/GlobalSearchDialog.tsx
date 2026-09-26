@@ -69,13 +69,14 @@ export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogPro
 
   const showResults = debouncedQuery.length >= 2
   const recentItems = showResults ? [] : getRecentItems()
-  const groups: { type: SearchResultType; items: SearchResultItem[] }[] = showResults
+  const allGroups: { type: SearchResultType; items: SearchResultItem[] }[] = showResults
     ? [
         { type: 'Task', items: data?.tasks ?? [] },
         { type: 'Project', items: data?.projects ?? [] },
         { type: 'Department', items: data?.departments ?? [] },
-      ].filter((group) => group.items.length > 0)
+      ]
     : []
+  const groups = allGroups.filter((group) => group.items.length > 0)
   const isSearching = showResults && isFetching
   const hasNoResults = showResults && !isFetching && groups.length === 0
 

@@ -15,7 +15,7 @@ function moveTaskInList(
   tasks: TaskDto[],
   taskId: string,
   statusId: string,
-  statusMeta: Pick<TaskDto, 'statusName' | 'statusColorKey'>,
+  statusMeta: Pick<TaskDto, 'statusName' | 'statusColorKey' | 'isCompletionStatus'>,
   toIndex?: number
 ): TaskDto[] {
   const moving = tasks.find((task) => String(task.id) === String(taskId))
@@ -29,6 +29,7 @@ function moveTaskInList(
     statusId: String(statusId),
     statusName: statusMeta.statusName,
     statusColorKey: statusMeta.statusColorKey,
+    isCompletionStatus: statusMeta.isCompletionStatus,
   }
 
   if (toIndex === undefined) {
@@ -80,6 +81,7 @@ export function useUpdateTaskStatusMutation() {
           {
             statusName: nextStatus?.name ?? currentTask?.statusName ?? '',
             statusColorKey: nextStatus?.colorKey ?? currentTask?.statusColorKey ?? 'gray',
+            isCompletionStatus: nextStatus?.isCompletionStatus ?? false,
           },
           toIndex
         )

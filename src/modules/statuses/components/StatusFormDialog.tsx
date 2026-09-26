@@ -74,8 +74,9 @@ function StatusFormFields({ mode, status, onOpenChange }: StatusFormFieldsProps)
               ? status.colorKey
               : 'gray') as StatusFormValues['colorKey'],
             isDefault: status.isDefault,
+            isCompletionStatus: status.isCompletionStatus,
           }
-        : { name: '', colorKey: 'gray', isDefault: false },
+        : { name: '', colorKey: 'gray', isDefault: false, isCompletionStatus: false },
   })
 
   async function onSubmit(values: StatusFormValues) {
@@ -86,6 +87,7 @@ function StatusFormFields({ mode, status, onOpenChange }: StatusFormFieldsProps)
           name: values.name,
           colorKey: values.colorKey,
           isDefault: values.isDefault,
+          isCompletionStatus: values.isCompletionStatus,
         })
       } else if (status) {
         await updateMutation.mutateAsync({
@@ -95,6 +97,7 @@ function StatusFormFields({ mode, status, onOpenChange }: StatusFormFieldsProps)
             colorKey: values.colorKey,
             isDefault: values.isDefault,
             displayOrder: status.displayOrder,
+            isCompletionStatus: values.isCompletionStatus,
           },
         })
       }
@@ -175,6 +178,26 @@ function StatusFormFields({ mode, status, onOpenChange }: StatusFormFieldsProps)
                 />
                 <Label htmlFor="status-isDefault" className="font-normal">
                   Varsayılan durum (yeni görevler bu durumda başlasın)
+                </Label>
+              </>
+            )}
+          />
+        </div>
+
+        <div className="flex items-center gap-2 sm:col-span-2">
+          <Controller
+            control={control}
+            name="isCompletionStatus"
+            render={({ field }) => (
+              <>
+                <Checkbox
+                  id="status-isCompletionStatus"
+                  checked={field.value}
+                  disabled={isPending}
+                  onCheckedChange={(checked) => field.onChange(checked === true)}
+                />
+                <Label htmlFor="status-isCompletionStatus" className="font-normal">
+                  Tamamlanma durumu (bu durumdaki görevler tamamlanmış sayılır)
                 </Label>
               </>
             )}

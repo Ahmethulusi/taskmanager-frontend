@@ -10,6 +10,7 @@ import { ProjectCard } from '@/modules/projects/components/ProjectCard'
 import { ProjectFormDialog } from '@/modules/projects/components/ProjectFormDialog'
 import { computeProjectStats } from '@/modules/projects/utils/projectStats'
 import type { ProjectDto } from '@/modules/projects/utils/types'
+import { useStatusesQuery } from '@/modules/statuses/api/useStatusesQuery'
 import { useTasksQuery } from '@/modules/tasks/api/useTasksQuery'
 
 type OpenDialog = 'create' | 'edit' | 'delete' | null
@@ -19,6 +20,7 @@ export function ProjectsPage() {
   const canManage = hasPermission('projects.manage')
   const { data, isLoading, isError, error } = useProjectsQuery()
   const { data: tasks } = useTasksQuery()
+  const { data: statuses } = useStatusesQuery()
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null)
   const [selected, setSelected] = useState<ProjectDto | null>(null)
 
@@ -62,7 +64,7 @@ export function ProjectsPage() {
           <ProjectCard
             key={project.id}
             project={project}
-            stats={computeProjectStats(project.id, tasks ?? [])}
+            stats={computeProjectStats(project.id, tasks ?? [], statuses ?? [])}
             onEdit={() => openEdit(project)}
             onDelete={() => openDelete(project)}
           />

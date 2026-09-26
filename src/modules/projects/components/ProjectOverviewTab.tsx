@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import { AlertCircle, Clock } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 
 import { MetricCard } from '@/modules/dashboard/components/MetricCard'
 import { getFieldLabel } from '@/modules/activity/utils/fieldLabels'
 import { useProjectActivityQuery } from '@/modules/projects/api/useProjectActivityQuery'
 import { computeProjectStats } from '@/modules/projects/utils/projectStats'
 import type { ProjectActivityItemDto, ProjectDto } from '@/modules/projects/utils/types'
+import { useStatusesQuery } from '@/modules/statuses/api/useStatusesQuery'
+import { TaskDetailsDialog } from '@/modules/tasks/components/TaskDetailsDialog'
 import { getDueUrgencyDisplay } from '@/modules/tasks/utils/dueUrgencyDisplay'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 
@@ -23,8 +25,10 @@ interface ProjectOverviewTabProps {
 }
 
 export function ProjectOverviewTab({ project, tasks }: ProjectOverviewTabProps) {
-  const navigate = useNavigate()
-  const stats = computeProjectStats(project.id, tasks)
+  const { data: statuses } = useStatusesQuery()
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const selectedTask = tasks.find((task) => String(task.id) === selectedTaskId) ?? null
+  const stats = computeProjectStats(project.id, tasks, statuses ?? [])
   const overdueTasks = tasks.filter((task) => task.isOverdue)
   const upcomingTasks = tasks.filter((task) => task.dueUrgency !== null)
   const {
@@ -34,10 +38,11 @@ export function ProjectOverviewTab({ project, tasks }: ProjectOverviewTabProps) 
   } = useProjectActivityQuery(project.id)
 
   function goToTask(taskId: string) {
-    navigate(`/tasks/${taskId}`)
+    setSelectedTaskId(taskId)
   }
 
   return (
+    <>
     <div className="flex flex-col gap-6 py-2">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <MetricCard label="Toplam" value={stats.totalCount} colorKey="yellow" />
@@ -83,6 +88,17 @@ export function ProjectOverviewTab({ project, tasks }: ProjectOverviewTabProps) 
         )}
       </div>
     </div>
+
+    {selectedTask && (
+      <TaskDetailsDialog
+        task={selectedTask}
+        open
+        onOpenChange={(open) => {
+          if (!open) setSelectedTaskId(null)
+        }}
+      />
+    )}
+    </>
   )
 }
 

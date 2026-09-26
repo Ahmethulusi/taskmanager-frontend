@@ -20,7 +20,7 @@ export function ProjectDetailPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <PageHeader title="Proje" />
+        <PageHeader title="Proje" backTo="/projects" backLabel="Projeler" />
         <p className="p-4 text-base">Yükleniyor...</p>
       </div>
     )
@@ -29,7 +29,7 @@ export function ProjectDetailPage() {
   if (isError || !project) {
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <PageHeader title="Proje" />
+        <PageHeader title="Proje" backTo="/projects" backLabel="Projeler" />
         <p className="p-4 text-base text-destructive">
           {error instanceof Error ? error.message : 'Bu projeye erişiminiz yok ya da proje bulunamadı'}
         </p>
@@ -42,7 +42,7 @@ export function ProjectDetailPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <PageHeader title="Proje" />
+      <PageHeader title={project.name} backTo="/projects" backLabel="Projeler" />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
         <div className="flex shrink-0 items-start gap-3">
           <div
@@ -73,7 +73,7 @@ export function ProjectDetailPage() {
             <TabsTrigger value="members">Üyeler</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" keepMounted className="min-h-0 flex-1 overflow-y-auto">
+          <TabsContent value="overview" keepMounted className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
             <ProjectOverviewTab project={project} tasks={projectTasks} />
           </TabsContent>
 
@@ -93,7 +93,7 @@ export function ProjectDetailPage() {
             <SprintsTab project={project} tasks={projectTasks} />
           </TabsContent>
 
-          <TabsContent value="members" keepMounted className="min-h-0 flex-1 overflow-y-auto">
+          <TabsContent value="members" keepMounted className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
             <ProjectMembersTab project={project} />
           </TabsContent>
         </Tabs>

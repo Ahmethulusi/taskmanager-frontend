@@ -6,12 +6,14 @@ export interface TaskStatusDto {
   displayOrder: number
   colorKey: StatusColorKey | string
   isDefault: boolean
+  isCompletionStatus: boolean
 }
 
 export interface CreateTaskStatusDto {
   name: string
   colorKey: StatusColorKey
   isDefault: boolean
+  isCompletionStatus: boolean
 }
 
 export interface UpdateTaskStatusDto {
@@ -19,4 +21,5 @@ export interface UpdateTaskStatusDto {
   colorKey: StatusColorKey
   isDefault: boolean
   displayOrder: number
+  isCompletionStatus: boolean
 }

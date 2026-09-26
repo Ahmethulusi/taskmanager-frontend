@@ -44,7 +44,7 @@ export function ProjectCard({ project, stats, onEdit, onDelete }: ProjectCardPro
 
   return (
     <Card
-      className="group flex h-60 cursor-pointer flex-col justify-between p-4 transition-colors duration-200 hover:bg-muted"
+      className="group flex min-h-60 cursor-pointer flex-col justify-between gap-3 overflow-hidden p-4 py-4 [--card-spacing:0px] transition-colors duration-200 hover:bg-muted"
       onClick={() => navigate(`/projects/${project.id}`)}
     >
       <div className="flex items-start justify-between">
@@ -100,8 +100,10 @@ export function ProjectCard({ project, stats, onEdit, onDelete }: ProjectCardPro
 
       <div className="flex flex-col gap-2 border-t border-border pt-3">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{stats.totalCount} görev</span>
-          {members.length > 0 && (
+          <span>
+            {stats.completedCount}/{stats.totalCount} görev
+          </span>
+          {members.length > 0 ? (
             <AvatarGroup>
               {visibleMembers.map((member) => (
                 <UserAvatar key={member.userId} name={member.fullName} size="sm" />
@@ -110,13 +112,15 @@ export function ProjectCard({ project, stats, onEdit, onDelete }: ProjectCardPro
                 <AvatarGroupCount>+{hiddenMemberCount}</AvatarGroupCount>
               )}
             </AvatarGroup>
+          ) : (
+            <span>{stats.progressPercentage}%</span>
           )}
         </div>
 
-        <Progress value={stats.progressPercentage} />
+        <Progress value={stats.progressPercentage} className="w-full" />
 
         {stats.overdueCount > 0 && (
-          <span className="text-xs font-medium text-destructive">
+          <span className="shrink-0 text-xs font-medium leading-none text-destructive">
             {stats.overdueCount} gecikmiş
           </span>
         )}

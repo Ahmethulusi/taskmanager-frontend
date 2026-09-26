@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react'
-import { AlertCircle, Clock, Lock } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Clock, Lock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { UserAvatar } from '@/components/UserAvatar'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -58,6 +59,37 @@ export function TaskDetailsDialog({ task, open, onOpenChange }: TaskDetailsDialo
         className="h-full gap-0 overflow-hidden p-0 data-[side=right]:w-full data-[side=right]:sm:w-2/3 data-[side=right]:sm:max-w-none"
       >
         <SheetHeader className="shrink-0 gap-2 border-b px-4 py-3 pr-14">
+          <div className="flex flex-wrap items-center gap-2">
+            {task.projectId ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1.5 px-2 text-muted-foreground"
+                onClick={() => {
+                  onOpenChange(false)
+                  navigate(`/projects/${task.projectId}`)
+                }}
+              >
+                <ArrowLeft className="size-4" />
+                Projeye dön
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1.5 px-2 text-muted-foreground"
+                onClick={() => {
+                  onOpenChange(false)
+                  navigate('/projects')
+                }}
+              >
+                <ArrowLeft className="size-4" />
+                Projeler
+              </Button>
+            )}
+          </div>
           <SheetTitle className="text-lg leading-snug">{task.title}</SheetTitle>
           {task.parentTaskId !== null && (
             <button

@@ -29,7 +29,7 @@ export function SprintCard({ sprint, stats, canManage, onClick, onEdit, onDelete
 
   return (
     <Card
-      className="group flex h-44 cursor-pointer flex-col justify-between p-4 transition-colors duration-200 hover:bg-muted"
+      className="group flex min-h-44 cursor-pointer flex-col justify-between gap-3 overflow-hidden p-4 py-4 [--card-spacing:0px] transition-colors duration-200 hover:bg-muted"
       onClick={onClick}
     >
       <div className="flex items-start justify-between gap-2">

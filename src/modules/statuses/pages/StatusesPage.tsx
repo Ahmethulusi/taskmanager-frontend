@@ -73,6 +73,7 @@ export function StatusesPage() {
             colorKey: toColorKey(current.colorKey),
             isDefault: current.isDefault,
             displayOrder: neighbor.displayOrder,
+            isCompletionStatus: current.isCompletionStatus,
           },
         }),
         updateMutation.mutateAsync({
@@ -82,6 +83,7 @@ export function StatusesPage() {
             colorKey: toColorKey(neighbor.colorKey),
             isDefault: neighbor.isDefault,
             displayOrder: current.displayOrder,
+            isCompletionStatus: neighbor.isCompletionStatus,
           },
         }),
       ])
@@ -116,6 +118,7 @@ export function StatusesPage() {
               <TableHead className="w-16">Renk</TableHead>
               <TableHead>Ad</TableHead>
               <TableHead className="w-28">Varsayılan</TableHead>
+              <TableHead className="w-32">Tamamlanma</TableHead>
               <TableHead className="w-36">Sıra</TableHead>
               <TableHead className="w-28 text-right">İşlemler</TableHead>
             </TableRow>
@@ -135,6 +138,9 @@ export function StatusesPage() {
                   <TableCell className="font-medium">{status.name}</TableCell>
                   <TableCell>
                     {status.isDefault ? <Check className="size-4 text-primary" /> : null}
+                  </TableCell>
+                  <TableCell>
+                    {status.isCompletionStatus ? <Check className="size-4 text-primary" /> : null}
                   </TableCell>
                   <TableCell>
                     <div className="inline-flex items-center gap-1">

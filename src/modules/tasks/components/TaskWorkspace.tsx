@@ -4,7 +4,6 @@ import { useSearchParams } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -244,137 +243,7 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
     )
 
     return (
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
-        {activeProject && (
-          <Badge variant="secondary" className="h-7 w-fit shrink-0 gap-1.5 px-3 text-sm">
-            Proje: {activeProject.name}
-            <button
-              type="button"
-              onClick={clearProjectFilter}
-              className="ml-1 rounded-full hover:text-destructive"
-            >
-              <X className="size-3.5" />
-              <span className="sr-only">Proje filtresini temizle</span>
-            </button>
-          </Badge>
-        )}
-
-        <div className="flex shrink-0 flex-wrap items-end gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="priority-filter" className="text-base">
-              Öncelik
-            </Label>
-            <Select
-              items={PRIORITY_OPTIONS}
-              value={priorityFilter}
-              onValueChange={(value) => setPriorityFilter(value as PriorityFilter)}
-            >
-              <SelectTrigger id="priority-filter" className="h-10 w-44 text-base">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PRIORITY_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value} className="text-base">
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="date-filter" className="text-base">
-              Tarih
-            </Label>
-            <Select
-              items={DATE_OPTIONS}
-              value={dateFilter}
-              onValueChange={(value) => setDateFilter(value as DateFilter)}
-            >
-              <SelectTrigger id="date-filter" className="h-10 w-44 text-base">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DATE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value} className="text-base">
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {!fixedProjectId && (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="project-filter" className="text-base">
-                Proje
-              </Label>
-              <Select
-                items={projectFilterOptions}
-                value={projectFilter}
-                onValueChange={(value) => setProjectFilter((value ?? 'all') as ProjectFilter)}
-              >
-                <SelectTrigger id="project-filter" className="h-10 w-52 text-base">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {projectFilterOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="text-base">
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="sort-option" className="text-base">
-              Sırala
-            </Label>
-            <Select
-              items={SORT_OPTIONS}
-              value={sortOption}
-              onValueChange={(value) => setSortOption(value as SortOption)}
-            >
-              <SelectTrigger id="sort-option" className="h-10 w-64 text-base">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SORT_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value} className="text-base">
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="due-status-filter" className="text-base">
-              Bitiş Durumu
-            </Label>
-            <Select
-              items={DUE_STATUS_OPTIONS}
-              value={dueStatusFilter}
-              onValueChange={(value) => setDueStatusFilter(value as DueStatusFilter)}
-            >
-              <SelectTrigger id="due-status-filter" className="h-10 w-48 text-base">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DUE_STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value} className="text-base">
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <TaskViewSwitcher value={viewMode} onChange={setViewMode} />
-        </div>
-
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-4">
         {viewMode === 'calendar' ? (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <CalendarView
@@ -402,8 +271,120 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-end px-4 pt-4">
-        <Button type="button" size="lg" onClick={() => openCreateDialog()}>
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-4 py-2">
+        <Select
+          items={PRIORITY_OPTIONS}
+          value={priorityFilter}
+          onValueChange={(value) => setPriorityFilter(value as PriorityFilter)}
+        >
+          <SelectTrigger id="priority-filter" aria-label="Öncelik" className="h-10 w-36 text-sm">
+            <SelectValue placeholder="Öncelik" />
+          </SelectTrigger>
+          <SelectContent>
+            {PRIORITY_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value} className="text-sm">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          items={DATE_OPTIONS}
+          value={dateFilter}
+          onValueChange={(value) => setDateFilter(value as DateFilter)}
+        >
+          <SelectTrigger id="date-filter" aria-label="Tarih" className="h-10 w-36 text-sm">
+            <SelectValue placeholder="Tarih" />
+          </SelectTrigger>
+          <SelectContent>
+            {DATE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value} className="text-sm">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {!fixedProjectId && (
+          <Select
+            items={projectFilterOptions}
+            value={projectFilter}
+            onValueChange={(value) => setProjectFilter((value ?? 'all') as ProjectFilter)}
+          >
+            <SelectTrigger id="project-filter" aria-label="Proje" className="h-10 w-44 text-sm">
+              <SelectValue placeholder="Proje" />
+            </SelectTrigger>
+            <SelectContent>
+              {projectFilterOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value} className="text-sm">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        <Select
+          items={SORT_OPTIONS}
+          value={sortOption}
+          onValueChange={(value) => setSortOption(value as SortOption)}
+        >
+          <SelectTrigger id="sort-option" aria-label="Sırala" className="h-10 w-56 text-sm">
+            <SelectValue placeholder="Sırala" />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value} className="text-sm">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          items={DUE_STATUS_OPTIONS}
+          value={dueStatusFilter}
+          onValueChange={(value) => setDueStatusFilter(value as DueStatusFilter)}
+        >
+          <SelectTrigger
+            id="due-status-filter"
+            aria-label="Bitiş Durumu"
+            className="h-10 w-44 text-sm"
+          >
+            <SelectValue placeholder="Bitiş Durumu" />
+          </SelectTrigger>
+          <SelectContent>
+            {DUE_STATUS_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value} className="text-sm">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <TaskViewSwitcher value={viewMode} onChange={setViewMode} />
+
+        {activeProject && (
+          <Badge variant="secondary" className="h-7 w-fit gap-1.5 px-3 text-sm">
+            Proje: {activeProject.name}
+            <button
+              type="button"
+              onClick={clearProjectFilter}
+              className="ml-1 rounded-full hover:text-destructive"
+            >
+              <X className="size-3.5" />
+              <span className="sr-only">Proje filtresini temizle</span>
+            </button>
+          </Badge>
+        )}
+
+        <Button
+          type="button"
+          size="lg"
+          className="ml-auto"
+          onClick={() => openCreateDialog()}
+        >
           <Plus />
           Yeni Görev
         </Button>

@@ -1,4 +1,6 @@
+import type { TaskStatusDto } from '@/modules/statuses/utils/types'
 import type { TaskDto } from '@/modules/tasks/utils/types'
+import { isTaskCompleted } from '@/modules/tasks/utils/taskCompletion'
 
 export interface ProjectStats {
   totalCount: number
@@ -7,10 +9,14 @@ export interface ProjectStats {
   progressPercentage: number
 }
 
-export function computeProjectStats(projectId: string, allTasks: TaskDto[]): ProjectStats {
+export function computeProjectStats(
+  projectId: string,
+  allTasks: TaskDto[],
+  statuses?: Pick<TaskStatusDto, 'id' | 'isCompletionStatus'>[]
+): ProjectStats {
   const tasks = allTasks.filter((task) => String(task.projectId) === String(projectId))
   const totalCount = tasks.length
-  const completedCount = tasks.filter((task) => task.isCompletionStatus).length
+  const completedCount = tasks.filter((task) => isTaskCompleted(task, statuses)).length
   const overdueCount = tasks.filter((task) => task.isOverdue).length
   const progressPercentage =
     totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100)

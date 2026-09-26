@@ -12,6 +12,7 @@ import { SprintFormDialog } from '@/modules/sprints/components/SprintFormDialog'
 import { useSprintsQuery } from '@/modules/sprints/api/useSprintsQuery'
 import { computeSprintStats } from '@/modules/sprints/utils/sprintStats'
 import type { SprintDto } from '@/modules/sprints/utils/types'
+import { useStatusesQuery } from '@/modules/statuses/api/useStatusesQuery'
 import { TaskWorkspace } from '@/modules/tasks/components/TaskWorkspace'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 
@@ -29,6 +30,7 @@ export function SprintsTab({ project, tasks }: SprintsTabProps) {
   const canManage = hasPermission('projects.manage') || myMembership?.role === 'Owner'
 
   const { data, isLoading, isError, error } = useSprintsQuery(project.id)
+  const { data: statuses } = useStatusesQuery()
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null)
   const [selected, setSelected] = useState<SprintDto | null>(null)
   const [activeSprint, setActiveSprint] = useState<SprintDto | null>(null)
@@ -95,7 +97,7 @@ export function SprintsTab({ project, tasks }: SprintsTabProps) {
           <SprintCard
             key={sprint.id}
             sprint={sprint}
-            stats={computeSprintStats(sprint.id, tasks)}
+            stats={computeSprintStats(sprint.id, tasks, statuses ?? [])}
             canManage={canManage}
             onClick={() => setActiveSprint(sprint)}
             onEdit={() => openEdit(sprint)}
@@ -107,7 +109,7 @@ export function SprintsTab({ project, tasks }: SprintsTabProps) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
       {canManage && (
         <div className="flex shrink-0 items-center justify-end p-4 pb-0">
           <Button type="button" size="lg" onClick={openCreate}>
