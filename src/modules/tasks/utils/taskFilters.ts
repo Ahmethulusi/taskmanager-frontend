@@ -6,6 +6,8 @@ export type DateFilter = 'all' | 'today' | 'thisWeek' | 'thisMonth'
 export type ProjectFilter = 'all' | 'none' | (string & {})
 /** `'all'` | `'unassigned'` (kimseye atanmamış) | user id */
 export type AssigneeFilter = 'all' | 'unassigned' | (string & {})
+/** `'all'` | department id */
+export type DepartmentFilter = 'all' | (string & {})
 export type SortField = 'createdAt' | 'priority' | null
 export type SortDirection = 'asc' | 'desc'
 
@@ -82,6 +84,23 @@ export function matchesAssigneeFilter(task: TaskDto, assigneeFilter: AssigneeFil
   }
 
   return assignedUsers.some((user) => String(user.id) === String(assigneeFilter))
+}
+
+/** Görev o departmana aitse veya atananlardan biri departman üyesiyse eşleşir. */
+export function matchesDepartmentFilter(
+  task: TaskDto,
+  departmentFilter: DepartmentFilter,
+  departmentMemberIds: ReadonlySet<string>
+): boolean {
+  if (departmentFilter === 'all') {
+    return true
+  }
+
+  if (toId(task.departmentId) === String(departmentFilter)) {
+    return true
+  }
+
+  return (task.assignedUsers ?? []).some((user) => departmentMemberIds.has(String(user.id)))
 }
 
 export function filterAndSortTasks(

@@ -14,8 +14,10 @@ import { TaskViewSwitcher } from '@/modules/tasks/components/TaskViewSwitcher'
 import {
   filterAndSortTasks,
   matchesAssigneeFilter,
+  matchesDepartmentFilter,
   type AssigneeFilter,
   type DateFilter,
+  type DepartmentFilter,
   type PriorityFilter,
   type ProjectFilter,
   type SortDirection,
@@ -25,6 +27,7 @@ import type { TaskDto } from '@/modules/tasks/utils/types'
 import { toDateKey } from '@/modules/tasks/utils/calendarDates'
 import type { TaskViewMode } from '@/modules/tasks/utils/viewMode'
 import { TaskBoardView } from '@/modules/tasks/views/TaskBoardView'
+import { useDepartmentsQuery } from '@/modules/departments/api/useDepartmentsQuery'
 import { useProjectsQuery } from '@/modules/projects/api/useProjectsQuery'
 import { useStatusesQuery } from '@/modules/statuses/api/useStatusesQuery'
 
@@ -97,6 +100,7 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
     error: statusesQueryError,
   } = useStatusesQuery()
   const { data: projects } = useProjectsQuery()
+  const { data: departments } = useDepartmentsQuery()
   const { hasPermission } = useAuth()
   const canFilterByAssignee = hasPermission('tasks.view.all')
 
@@ -110,6 +114,7 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [dueStatusFilter, setDueStatusFilter] = useState<DueStatusFilter>('all')
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>('all')
+  const [departmentFilter, setDepartmentFilter] = useState<DepartmentFilter>('all')
   const [sortOption, setSortOption] = useState<SortOption>('default')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [createDueDate, setCreateDueDate] = useState<string | undefined>()
@@ -175,13 +180,34 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
     dateFilter !== 'all' ||
     dueStatusFilter !== 'all' ||
     effectiveAssigneeFilter !== 'all' ||
+    departmentFilter !== 'all' ||
     (!fixedProjectId && projectFilter !== 'all')
+
+  function getDepartmentMemberIds(departmentId: DepartmentFilter): Set<string> {
+    const department = departments?.find((item) => String(item.id) === String(departmentId))
+    return new Set((department?.users ?? []).map((user) => String(user.id)))
+  }
+
+  const departmentMemberIds = getDepartmentMemberIds(departmentFilter)
+
+  function changeDepartmentFilter(value: DepartmentFilter) {
+    setDepartmentFilter(value)
+    if (
+      value !== 'all' &&
+      assigneeFilter !== 'all' &&
+      assigneeFilter !== 'unassigned' &&
+      !getDepartmentMemberIds(value).has(String(assigneeFilter))
+    ) {
+      setAssigneeFilter('all')
+    }
+  }
 
   function clearFilters() {
     setPriorityFilter('all')
     setDateFilter('all')
     setDueStatusFilter('all')
     setAssigneeFilter('all')
+    setDepartmentFilter('all')
     if (!fixedProjectId) {
       const next = new URLSearchParams(searchParams)
       next.delete('projectId')
@@ -198,10 +224,21 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
     })) ?? []),
   ]
 
+  const departmentFilterOptions: FilterOption<DepartmentFilter>[] = [
+    { value: 'all', label: 'Tüm departmanlar' },
+    ...[...(departments ?? [])]
+      .sort((a, b) => a.name.localeCompare(b.name, 'tr-TR'))
+      .map((department) => ({
+        value: String(department.id) as DepartmentFilter,
+        label: department.name,
+      })),
+  ]
+
   const assigneeNames = new Map<string, string>()
   for (const task of scopedTasks) {
     if (fixedProjectId && String(task.projectId) !== String(fixedProjectId)) continue
     for (const user of task.assignedUsers ?? []) {
+      if (departmentFilter !== 'all' && !departmentMemberIds.has(String(user.id))) continue
       assigneeNames.set(String(user.id), user.fullName)
     }
   }
@@ -229,6 +266,7 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
     const selectedSort =
       SORT_OPTIONS.find((option) => option.value === sortOption) ?? SORT_OPTIONS[0]
     const sourceTasks = scopedTasks.filter((task) => {
+      if (!matchesDepartmentFilter(task, departmentFilter, departmentMemberIds)) return false
       if (!matchesAssigneeFilter(task, effectiveAssigneeFilter)) return false
       if (dueStatusFilter === 'all') return true
       if (dueStatusFilter === 'overdue') return task.isOverdue
@@ -288,6 +326,15 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
             onChange={setProjectFilter}
           />
         )}
+
+        <TaskFilterSelect
+          id="department-filter"
+          label="Departman"
+          options={departmentFilterOptions}
+          value={departmentFilter}
+          defaultValue="all"
+          onChange={changeDepartmentFilter}
+        />
 
         {canFilterByAssignee && (
           <TaskFilterSelect

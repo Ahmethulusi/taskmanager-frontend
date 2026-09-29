@@ -1,11 +1,24 @@
 import { useState } from 'react'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  pointerWithin,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { useUpdateTaskDueDateMutation } from '@/modules/tasks/api/useUpdateTaskDueDateMutation'
 import { CalendarDayList } from '@/modules/tasks/components/CalendarDayList'
 import { CalendarMonthGrid } from '@/modules/tasks/components/CalendarMonthGrid'
+import { CalendarTaskChipOverlay } from '@/modules/tasks/components/CalendarTaskChip'
 import { CalendarWeekGrid } from '@/modules/tasks/components/CalendarWeekGrid'
-import { getWeekDays } from '@/modules/tasks/utils/calendarDates'
+import { getWeekDays, toDateKey } from '@/modules/tasks/utils/calendarDates'
+import { toApiDueDate } from '@/modules/tasks/utils/dueDate'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 
 type CalendarMode = 'month' | 'week' | 'day'
@@ -65,6 +78,40 @@ function shiftAnchorDate(date: Date, mode: CalendarMode, amount: number): Date {
 export function CalendarView({ tasks, onTaskClick, onCreateTask }: CalendarViewProps) {
   const [mode, setMode] = useState<CalendarMode>('month')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
+  const [activeTask, setActiveTask] = useState<TaskDto | null>(null)
+  const [dropError, setDropError] = useState<string | null>(null)
+  const { mutate: updateDueDate } = useUpdateTaskDueDateMutation()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  )
+
+  function handleDragStart(event: DragStartEvent) {
+    setDropError(null)
+    setActiveTask((event.active.data.current?.task as TaskDto | undefined) ?? null)
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveTask(null)
+
+    const task = event.active.data.current?.task as TaskDto | undefined
+    const targetDateKey = event.over ? String(event.over.id) : null
+    if (!task || !targetDateKey) {
+      return
+    }
+    if (task.dueDate && toDateKey(new Date(task.dueDate)) === targetDateKey) {
+      return
+    }
+
+    updateDueDate(
+      { task, dueDate: toApiDueDate(targetDateKey) ?? targetDateKey },
+      {
+        onError: (err) => {
+          setDropError(err instanceof Error ? err.message : 'Bitiş tarihi güncellenemedi')
+        },
+      }
+    )
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -111,32 +158,45 @@ export function CalendarView({ tasks, onTaskClick, onCreateTask }: CalendarViewP
         </div>
       </div>
 
-      <div className="no-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
-        {mode === 'month' && (
-          <CalendarMonthGrid
-            anchorDate={anchorDate}
-            tasks={tasks}
-            onTaskClick={onTaskClick}
-            onCreateTask={onCreateTask}
-          />
-        )}
-        {mode === 'week' && (
-          <CalendarWeekGrid
-            anchorDate={anchorDate}
-            tasks={tasks}
-            onTaskClick={onTaskClick}
-            onCreateTask={onCreateTask}
-          />
-        )}
-        {mode === 'day' && (
-          <CalendarDayList
-            anchorDate={anchorDate}
-            tasks={tasks}
-            onTaskClick={onTaskClick}
-            onCreateTask={onCreateTask}
-          />
-        )}
-      </div>
+      {dropError && <p className="shrink-0 text-sm text-destructive">{dropError}</p>}
+
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveTask(null)}
+      >
+        <div className="no-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+          {mode === 'month' && (
+            <CalendarMonthGrid
+              anchorDate={anchorDate}
+              tasks={tasks}
+              onTaskClick={onTaskClick}
+              onCreateTask={onCreateTask}
+            />
+          )}
+          {mode === 'week' && (
+            <CalendarWeekGrid
+              anchorDate={anchorDate}
+              tasks={tasks}
+              onTaskClick={onTaskClick}
+              onCreateTask={onCreateTask}
+            />
+          )}
+          {mode === 'day' && (
+            <CalendarDayList
+              anchorDate={anchorDate}
+              tasks={tasks}
+              onTaskClick={onTaskClick}
+              onCreateTask={onCreateTask}
+            />
+          )}
+        </div>
+        <DragOverlay dropAnimation={null}>
+          {activeTask && <CalendarTaskChipOverlay task={activeTask} />}
+        </DragOverlay>
+      </DndContext>
     </div>
   )
 }

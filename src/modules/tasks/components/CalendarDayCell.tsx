@@ -1,3 +1,4 @@
+import { useDroppable } from '@dnd-kit/core'
 import { Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -8,7 +9,7 @@ import {
 } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { CalendarTaskChip } from '@/modules/tasks/components/CalendarTaskChip'
-import { isSameDay } from '@/modules/tasks/utils/calendarDates'
+import { isSameDay, toDateKey } from '@/modules/tasks/utils/calendarDates'
 import type { TaskDto } from '@/modules/tasks/utils/types'
 
 interface CalendarDayCellProps {
@@ -33,12 +34,15 @@ export function CalendarDayCell({
   const visibleTasks = tasks.slice(0, maxVisible)
   const remainingTasks = tasks.slice(maxVisible)
   const isToday = isSameDay(date, new Date())
+  const { setNodeRef, isOver } = useDroppable({ id: toDateKey(date) })
 
   return (
     <div
+      ref={setNodeRef}
       className={cn(
-        'min-h-28 min-w-0 border-r border-b p-1.5',
+        'min-h-28 min-w-0 border-r border-b p-1.5 transition-colors',
         !isCurrentMonth && 'bg-muted/30 opacity-55',
+        isOver && 'bg-primary/10 opacity-100 ring-2 ring-primary/40 ring-inset',
         className
       )}
     >
@@ -97,6 +101,7 @@ export function CalendarDayCell({
                 <CalendarTaskChip
                   key={String(task.id)}
                   task={task}
+                  draggable={false}
                   onClick={() => onTaskClick(task)}
                 />
               ))}
