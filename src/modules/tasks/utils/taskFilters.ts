@@ -4,6 +4,8 @@ export type PriorityFilter = 'all' | 'Dusuk' | 'Orta' | 'Yuksek'
 export type DateFilter = 'all' | 'today' | 'thisWeek' | 'thisMonth'
 /** `'all'` | `'none'` (projesi olmayan) | project id */
 export type ProjectFilter = 'all' | 'none' | (string & {})
+/** `'all'` | `'unassigned'` (kimseye atanmamış) | user id */
+export type AssigneeFilter = 'all' | 'unassigned' | (string & {})
 export type SortField = 'createdAt' | 'priority' | null
 export type SortDirection = 'asc' | 'desc'
 
@@ -67,6 +69,19 @@ function matchesProjectFilter(task: TaskDto, projectFilter: ProjectFilter): bool
   }
 
   return projectId === String(projectFilter)
+}
+
+export function matchesAssigneeFilter(task: TaskDto, assigneeFilter: AssigneeFilter): boolean {
+  if (assigneeFilter === 'all') {
+    return true
+  }
+
+  const assignedUsers = task.assignedUsers ?? []
+  if (assigneeFilter === 'unassigned') {
+    return assignedUsers.length === 0
+  }
+
+  return assignedUsers.some((user) => String(user.id) === String(assigneeFilter))
 }
 
 export function filterAndSortTasks(

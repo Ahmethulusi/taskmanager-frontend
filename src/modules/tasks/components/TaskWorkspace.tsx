@@ -2,23 +2,19 @@ import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { useAuth } from '@/lib/AuthContext'
 import { useTasksQuery } from '@/modules/tasks/api/useTasksQuery'
 import { CalendarView } from '@/modules/tasks/components/CalendarView'
 import { TaskDetailsDialog } from '@/modules/tasks/components/TaskDetailsDialog'
+import { TaskFilterSelect, type FilterOption } from '@/modules/tasks/components/TaskFilterSelect'
 import { TaskFormDialog } from '@/modules/tasks/components/TaskFormDialog'
 import { TaskListView } from '@/modules/tasks/components/TaskListView'
 import { TaskViewSwitcher } from '@/modules/tasks/components/TaskViewSwitcher'
 import {
   filterAndSortTasks,
+  matchesAssigneeFilter,
+  type AssigneeFilter,
   type DateFilter,
   type PriorityFilter,
   type ProjectFilter,
@@ -32,27 +28,27 @@ import { TaskBoardView } from '@/modules/tasks/views/TaskBoardView'
 import { useProjectsQuery } from '@/modules/projects/api/useProjectsQuery'
 import { useStatusesQuery } from '@/modules/statuses/api/useStatusesQuery'
 
-const PRIORITY_OPTIONS: { value: PriorityFilter; label: string }[] = [
-  { value: 'all', label: 'Tümü' },
+const PRIORITY_OPTIONS: FilterOption<PriorityFilter>[] = [
+  { value: 'all', label: 'Tüm öncelikler' },
   { value: 'Dusuk', label: 'Düşük' },
   { value: 'Orta', label: 'Orta' },
   { value: 'Yuksek', label: 'Yüksek' },
 ]
 
-const DATE_OPTIONS: { value: DateFilter; label: string }[] = [
-  { value: 'all', label: 'Tümü' },
+const DATE_OPTIONS: FilterOption<DateFilter>[] = [
+  { value: 'all', label: 'Her zaman' },
   { value: 'today', label: 'Bugün' },
-  { value: 'thisWeek', label: 'Bu Hafta' },
-  { value: 'thisMonth', label: 'Bu Ay' },
+  { value: 'thisWeek', label: 'Bu hafta' },
+  { value: 'thisMonth', label: 'Bu ay' },
 ]
 
 type DueStatusFilter = 'all' | 'overdue' | 'tomorrow' | 'soon'
 
-const DUE_STATUS_OPTIONS: { value: DueStatusFilter; label: string }[] = [
-  { value: 'all', label: 'Tümü' },
+const DUE_STATUS_OPTIONS: FilterOption<DueStatusFilter>[] = [
+  { value: 'all', label: 'Tüm bitiş tarihleri' },
   { value: 'overdue', label: 'Gecikmiş' },
-  { value: 'tomorrow', label: 'Yarın Bitiyor' },
-  { value: 'soon', label: 'Yakında Bitiyor' },
+  { value: 'tomorrow', label: 'Yarın bitiyor' },
+  { value: 'soon', label: '7 gün içinde bitiyor' },
 ]
 
 type SortOption =
@@ -62,37 +58,15 @@ type SortOption =
   | 'priority-desc'
   | 'priority-asc'
 
-const SORT_OPTIONS: {
-  value: SortOption
-  label: string
+const SORT_OPTIONS: (FilterOption<SortOption> & {
   field: SortField
   direction: SortDirection
-}[] = [
-  { value: 'default', label: 'Varsayılan Sıra', field: null, direction: 'asc' },
-  {
-    value: 'createdAt-desc',
-    label: 'Tarihe Göre (Yeni → Eski)',
-    field: 'createdAt',
-    direction: 'desc',
-  },
-  {
-    value: 'createdAt-asc',
-    label: 'Tarihe Göre (Eski → Yeni)',
-    field: 'createdAt',
-    direction: 'asc',
-  },
-  {
-    value: 'priority-desc',
-    label: 'Önceliğe Göre (Yüksek → Düşük)',
-    field: 'priority',
-    direction: 'desc',
-  },
-  {
-    value: 'priority-asc',
-    label: 'Önceliğe Göre (Düşük → Yüksek)',
-    field: 'priority',
-    direction: 'asc',
-  },
+})[] = [
+  { value: 'default', label: 'Varsayılan sıra', field: null, direction: 'asc' },
+  { value: 'createdAt-desc', label: 'En yeni önce', field: 'createdAt', direction: 'desc' },
+  { value: 'createdAt-asc', label: 'En eski önce', field: 'createdAt', direction: 'asc' },
+  { value: 'priority-desc', label: 'Yüksek öncelik önce', field: 'priority', direction: 'desc' },
+  { value: 'priority-asc', label: 'Düşük öncelik önce', field: 'priority', direction: 'asc' },
 ]
 
 function parseViewMode(value: string | null): TaskViewMode {
@@ -123,6 +97,8 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
     error: statusesQueryError,
   } = useStatusesQuery()
   const { data: projects } = useProjectsQuery()
+  const { hasPermission } = useAuth()
+  const canFilterByAssignee = hasPermission('tasks.view.all')
 
   const [searchParams, setSearchParams] = useSearchParams()
   const projectIdParam = fixedProjectId ? null : searchParams.get('projectId')
@@ -133,6 +109,7 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all')
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [dueStatusFilter, setDueStatusFilter] = useState<DueStatusFilter>('all')
+  const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>('all')
   const [sortOption, setSortOption] = useState<SortOption>('default')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [createDueDate, setCreateDueDate] = useState<string | undefined>()
@@ -146,9 +123,6 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
     ? (data ?? []).filter((task) => String(task.sprintId) === String(fixedSprintId))
     : (data ?? [])
 
-  const activeProject = fixedProjectId
-    ? undefined
-    : projects?.find((project) => String(project.id) === projectIdParam)
   const defaultProjectId =
     fixedProjectId ?? (projectIdParam && projectIdParam !== 'none' ? projectIdParam : undefined)
   const linkedTask = taskIdParam
@@ -195,19 +169,48 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
     setSearchParams(next)
   }
 
-  function clearProjectFilter() {
-    const next = new URLSearchParams(searchParams)
-    next.delete('projectId')
-    setSearchParams(next)
+  const effectiveAssigneeFilter: AssigneeFilter = canFilterByAssignee ? assigneeFilter : 'all'
+  const hasActiveFilters =
+    priorityFilter !== 'all' ||
+    dateFilter !== 'all' ||
+    dueStatusFilter !== 'all' ||
+    effectiveAssigneeFilter !== 'all' ||
+    (!fixedProjectId && projectFilter !== 'all')
+
+  function clearFilters() {
+    setPriorityFilter('all')
+    setDateFilter('all')
+    setDueStatusFilter('all')
+    setAssigneeFilter('all')
+    if (!fixedProjectId) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('projectId')
+      setSearchParams(next)
+    }
   }
 
-  const projectFilterOptions: { value: ProjectFilter; label: string }[] = [
-    { value: 'all', label: 'Tümü' },
+  const projectFilterOptions: FilterOption<ProjectFilter>[] = [
+    { value: 'all', label: 'Tüm projeler' },
     { value: 'none', label: 'Projesiz' },
     ...(projects?.map((project) => ({
       value: String(project.id) as ProjectFilter,
       label: project.name,
     })) ?? []),
+  ]
+
+  const assigneeNames = new Map<string, string>()
+  for (const task of scopedTasks) {
+    if (fixedProjectId && String(task.projectId) !== String(fixedProjectId)) continue
+    for (const user of task.assignedUsers ?? []) {
+      assigneeNames.set(String(user.id), user.fullName)
+    }
+  }
+  const assigneeFilterOptions: FilterOption<AssigneeFilter>[] = [
+    { value: 'all', label: 'Herkes' },
+    { value: 'unassigned', label: 'Atanmamış' },
+    ...[...assigneeNames.entries()]
+      .sort(([, a], [, b]) => a.localeCompare(b, 'tr-TR'))
+      .map(([id, fullName]) => ({ value: id as AssigneeFilter, label: fullName })),
   ]
 
   function renderContent() {
@@ -225,14 +228,13 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
 
     const selectedSort =
       SORT_OPTIONS.find((option) => option.value === sortOption) ?? SORT_OPTIONS[0]
-    const sourceTasks =
-      dueStatusFilter === 'all'
-        ? scopedTasks
-        : scopedTasks.filter((task) => {
-            if (dueStatusFilter === 'overdue') return task.isOverdue
-            if (dueStatusFilter === 'tomorrow') return task.dueUrgency === 'Tomorrow'
-            return task.dueUrgency === 'Soon'
-          })
+    const sourceTasks = scopedTasks.filter((task) => {
+      if (!matchesAssigneeFilter(task, effectiveAssigneeFilter)) return false
+      if (dueStatusFilter === 'all') return true
+      if (dueStatusFilter === 'overdue') return task.isOverdue
+      if (dueStatusFilter === 'tomorrow') return task.dueUrgency === 'Tomorrow'
+      return task.dueUrgency === 'Soon'
+    })
     const tasks = filterAndSortTasks(
       sourceTasks,
       priorityFilter,
@@ -254,7 +256,11 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
           </div>
         ) : tasks.length === 0 ? (
           <p className="p-4 text-base text-muted-foreground">
-            {defaultProjectId ? 'Bu projede henüz görev yok' : 'Görev bulunamadı'}
+            {hasActiveFilters
+              ? 'Seçili filtrelere uyan görev yok'
+              : defaultProjectId
+                ? 'Bu projede henüz görev yok'
+                : 'Görev bulunamadı'}
           </p>
         ) : (
           <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
@@ -272,117 +278,83 @@ export function TaskWorkspace({ fixedProjectId, fixedSprintId }: TaskWorkspacePr
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex shrink-0 flex-wrap items-center gap-2 px-4 py-2">
-        <Select
-          items={PRIORITY_OPTIONS}
-          value={priorityFilter}
-          onValueChange={(value) => setPriorityFilter(value as PriorityFilter)}
-        >
-          <SelectTrigger id="priority-filter" aria-label="Öncelik" className="h-10 w-36 text-sm">
-            <SelectValue placeholder="Öncelik" />
-          </SelectTrigger>
-          <SelectContent>
-            {PRIORITY_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value} className="text-sm">
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          items={DATE_OPTIONS}
-          value={dateFilter}
-          onValueChange={(value) => setDateFilter(value as DateFilter)}
-        >
-          <SelectTrigger id="date-filter" aria-label="Tarih" className="h-10 w-36 text-sm">
-            <SelectValue placeholder="Tarih" />
-          </SelectTrigger>
-          <SelectContent>
-            {DATE_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value} className="text-sm">
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
         {!fixedProjectId && (
-          <Select
-            items={projectFilterOptions}
+          <TaskFilterSelect
+            id="project-filter"
+            label="Proje"
+            options={projectFilterOptions}
             value={projectFilter}
-            onValueChange={(value) => setProjectFilter((value ?? 'all') as ProjectFilter)}
-          >
-            <SelectTrigger id="project-filter" aria-label="Proje" className="h-10 w-44 text-sm">
-              <SelectValue placeholder="Proje" />
-            </SelectTrigger>
-            <SelectContent>
-              {projectFilterOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value} className="text-sm">
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            defaultValue="all"
+            onChange={setProjectFilter}
+          />
         )}
 
-        <Select
-          items={SORT_OPTIONS}
-          value={sortOption}
-          onValueChange={(value) => setSortOption(value as SortOption)}
-        >
-          <SelectTrigger id="sort-option" aria-label="Sırala" className="h-10 w-56 text-sm">
-            <SelectValue placeholder="Sırala" />
-          </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value} className="text-sm">
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {canFilterByAssignee && (
+          <TaskFilterSelect
+            id="assignee-filter"
+            label="Atanan"
+            options={assigneeFilterOptions}
+            value={assigneeFilter}
+            defaultValue="all"
+            onChange={setAssigneeFilter}
+          />
+        )}
 
-        <Select
-          items={DUE_STATUS_OPTIONS}
+        <TaskFilterSelect
+          id="priority-filter"
+          label="Öncelik"
+          options={PRIORITY_OPTIONS}
+          value={priorityFilter}
+          defaultValue="all"
+          onChange={setPriorityFilter}
+        />
+
+        <TaskFilterSelect
+          id="due-status-filter"
+          label="Bitiş"
+          options={DUE_STATUS_OPTIONS}
           value={dueStatusFilter}
-          onValueChange={(value) => setDueStatusFilter(value as DueStatusFilter)}
-        >
-          <SelectTrigger
-            id="due-status-filter"
-            aria-label="Bitiş Durumu"
-            className="h-10 w-44 text-sm"
+          defaultValue="all"
+          onChange={setDueStatusFilter}
+        />
+
+        <TaskFilterSelect
+          id="date-filter"
+          label="Oluşturulma"
+          options={DATE_OPTIONS}
+          value={dateFilter}
+          defaultValue="all"
+          onChange={setDateFilter}
+        />
+
+        {hasActiveFilters && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-10 gap-1 text-muted-foreground"
+            onClick={clearFilters}
           >
-            <SelectValue placeholder="Bitiş Durumu" />
-          </SelectTrigger>
-          <SelectContent>
-            {DUE_STATUS_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value} className="text-sm">
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <TaskViewSwitcher value={viewMode} onChange={setViewMode} />
-
-        {activeProject && (
-          <Badge variant="secondary" className="h-7 w-fit gap-1.5 px-3 text-sm">
-            Proje: {activeProject.name}
-            <button
-              type="button"
-              onClick={clearProjectFilter}
-              className="ml-1 rounded-full hover:text-destructive"
-            >
-              <X className="size-3.5" />
-              <span className="sr-only">Proje filtresini temizle</span>
-            </button>
-          </Badge>
+            <X />
+            Filtreleri temizle
+          </Button>
         )}
+
+        <div className="ml-auto flex items-center gap-2">
+          <TaskFilterSelect
+            id="sort-option"
+            label="Sırala"
+            options={SORT_OPTIONS}
+            value={sortOption}
+            defaultValue="default"
+            onChange={setSortOption}
+          />
+          <TaskViewSwitcher value={viewMode} onChange={setViewMode} />
+        </div>
 
         <Button
           type="button"
           size="lg"
-          className="ml-auto"
           onClick={() => openCreateDialog()}
         >
           <Plus />
