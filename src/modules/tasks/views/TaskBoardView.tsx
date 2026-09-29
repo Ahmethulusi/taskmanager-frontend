@@ -1,11 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
+  MeasuringStrategy,
   PointerSensor,
-  closestCorners,
+  closestCenter,
+  getFirstCollision,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
@@ -44,6 +49,42 @@ export function TaskBoardView({ tasks, statuses }: TaskBoardViewProps) {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   )
 
+  const lastOverIdRef = useRef<string | null>(null)
+
+  // Sütunlar ekran boyunca uzadığı için hedef, köşe mesafesine değil imlecin bulunduğu sütuna göre seçilir.
+  const collisionDetection = useCallback<CollisionDetection>(
+    (args) => {
+      const pointerCollisions = pointerWithin(args)
+      const collisions = pointerCollisions.length > 0 ? pointerCollisions : rectIntersection(args)
+      const firstOverId = getFirstCollision(collisions, 'id')
+
+      if (firstOverId == null) {
+        return lastOverIdRef.current ? [{ id: lastOverIdRef.current }] : []
+      }
+
+      let overId = String(firstOverId)
+      const containerItems = items[overId]
+      if (containerItems && containerItems.length > 0) {
+        const closestItem = getFirstCollision(
+          closestCenter({
+            ...args,
+            droppableContainers: args.droppableContainers.filter((container) =>
+              containerItems.includes(String(container.id))
+            ),
+          }),
+          'id'
+        )
+        if (closestItem != null) {
+          overId = String(closestItem)
+        }
+      }
+
+      lastOverIdRef.current = overId
+      return [{ id: overId }]
+    },
+    [items]
+  )
+
   const taskById = useMemo(() => {
     const map = new Map<string, TaskDto>()
     for (const task of tasks) {
@@ -56,6 +97,7 @@ export function TaskBoardView({ tasks, statuses }: TaskBoardViewProps) {
 
   function handleDragStart(event: DragStartEvent) {
     setError(null)
+    lastOverIdRef.current = null
     setActiveTaskId(String(event.active.id))
     setDragItems(derivedItems)
   }
@@ -184,7 +226,8 @@ export function TaskBoardView({ tasks, statuses }: TaskBoardViewProps) {
       {error && <p className="mb-2 shrink-0 text-sm text-destructive">{error}</p>}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
